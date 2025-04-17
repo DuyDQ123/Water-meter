@@ -41,7 +41,7 @@ class NetworkConfig {
 public:
     NetworkConfig() : imageUrl("") {}
     
-    const char* getSSID() const { return "duc"; }
+    const char* getSSID() const { return "duy"; }
     const char* getPassword() const { return "11111111"; }
     const char* getNgrokUrl() const { return "df92-14-254-246-197.ngrok-free.app"; }
     const char* getServerUrl() const { return "http://192.168.1.3"; }

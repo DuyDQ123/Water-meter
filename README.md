@@ -110,7 +110,7 @@ Stream: /video_stream/uploaded_image.jpg
 ### Network Settings
 ```
 WiFi:
-  SSID: duc
+  SSID: duy
   Password: 11111111
 
 Servers:
@@ -175,7 +175,7 @@ Flutter:
 ```bash
 # 1. Install XAMPP
 # 2. Clone repository
-git clone https://github.com/anhducad1111/iotdigi.git
+git clone https://github.com/DuyDQ123/Water-meter
 cd iotdigi
 
 # 3. Configure database

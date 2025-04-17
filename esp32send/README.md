@@ -43,7 +43,7 @@ OLED SCL   GPIO22
 
 ### WiFi Settings
 ```cpp
-SSID: duc
+SSID: duy
 Password: 11111111
 ```
 
