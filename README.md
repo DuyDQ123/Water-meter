@@ -1,63 +1,234 @@
-# 💧 Water-meter IoT System 🚰
+# IoT Environmental Monitoring and OCR System
 
-## 📸 Project Overview
+## Table of Contents
+1. [Project Overview](#project-overview)
+2. [System Architecture](#system-architecture)
+   - [ESP32-CAM Module](#1-esp32-cam-module)
+   - [ESP32 Environmental Monitor](#2-esp32-environmental-monitor)
+   - [Web Application](#3-web-application)
+   - [Flutter Mobile App](#4-flutter-mobile-app-demo)
+3. [Network Architecture](#network-architecture)
+4. [Hardware Components](#hardware-components)
+5. [Software Requirements](#software-requirements)
+6. [Installation and Setup](#installation-and-setup)
+7. [Testing Procedures](#testing-procedures)
+8. [Future Enhancements](#future-enhancements)
 
-This project includes two main modules:
-- **esp32cam**: ESP32-CAM for image capture, OCR (Optical Character Recognition), LED control, and image streaming.
-- **esp32send**: Standard ESP32 (with DHT sensor & OLED display) for temperature/humidity monitoring, OLED display, and data posting to server.
+## Project Overview
+An integrated IoT system combining:
+1. ESP32-CAM for image capture and OCR
+2. ESP32 environmental monitor
+3. Web application for data visualization
+4. Flutter mobile application (Demo)
 
-## 📁 Folder Structure
+## System Architecture
 
-- `esp32cam/` – ESP32-CAM code (image capture, OCR, LED control)
-- `esp32send/` – ESP32 code for DHT sensor, OLED, and server communication
-- `video_upload/` – PHP backend for receiving data from ESP32
+### 1. ESP32-CAM Module
+- Real-time image streaming (10 FPS)
+- OCR processing with OCR.space API
+- LED brightness control (0-800)
+- FreeRTOS multi-tasking on dual cores
 
-## 🛠️ Hardware Requirements
+### 2. ESP32 Environmental Monitor
+- Temperature/humidity monitoring (DHT22)
+- OLED display interface (128x64)
+- OCR text display with auto-scroll
+- 10-second update interval
 
-- ESP32-CAM (AI-Thinker or compatible)
-- ESP32 DevKit (or similar)
-- DHT22 Sensor 🌡️
-- OLED I2C 128x64 Display 🖥️
-- Jumper wires, suitable power supply
+### 3. Web Application
+**Technology Stack:**
+```
+Backend:  PHP + MySQL
+Frontend: HTML/CSS + JavaScript
+Server:   Apache (XAMPP)
+```
 
-## ⚙️ Setup Instructions
+**Features:**
+- Live camera stream viewer
+- Environmental data graphs
+- OCR text history & search
+- LED brightness control
+- Data export to CSV
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/DuyDQ123/Warter-metter.git
-   ```
+**File Structure:**
+```
+video_upload/
+├── post.php          # Data reception
+├── get.php           # Data retrieval
+├── index.html        # Main interface
+├── css/             # Stylesheets
+├── js/              # JavaScript files
+└── video_stream/    # Image storage
+```
 
-2. **Install Arduino Libraries:**
-   - `WiFi.h`
-   - `HTTPClient.h`
-   - `ArduinoJson.h`
-   - `DHT sensor library`
-   - `Adafruit SSD1306`
-   - `Adafruit GFX`
-   - `esp_camera` (for ESP32-CAM)
+### 4. Flutter Mobile App (Demo)
+**Features:**
+- Real-time data monitoring
+- Push notifications
+- Interactive charts
+- Device control panel
 
-3. **Configure WiFi & Server:**
-   - Edit WiFi credentials and server URLs in each `config.h` file to match your network.
+**Architecture:**
+- Material Design 3
+- Provider state management
+- REST API integration
+- Local SQLite cache
 
-4. **Upload Code:**
-   - Flash `esp32cam/esp32cam.ino` to your ESP32-CAM.
-   - Flash `esp32send/esp32send.ino` to your ESP32 DevKit.
+## Network Architecture
 
-5. **Run PHP Backend:**
-   - Place the `video_upload` folder in your web server directory (e.g., `XAMPP/htdocs`).
-   - Make sure PHP and MySQL are running.
+### API Endpoints
+1. **Data Upload**
+```
+POST /video_upload/post.php
+Content-Type: multipart/form-data
+Body: {
+    file: image_data,
+    temp: float,
+    humidity: float,
+    ocr_text: string
+}
+```
 
-## 🚀 Usage
+2. **Data Retrieval**
+```
+GET /video_upload/get.php
+Response: {
+    "temp": 25.6,
+    "humidity": 65.4,
+    "ocr_text": "Sample text",
+    "timestamp": "2025-04-06 12:44:08"
+}
+```
 
-- Access the endpoints printed in the Serial Monitor after ESP32-CAM boots to control the LED or trigger OCR.
-- The standard ESP32 will automatically send temperature and humidity data to the server and display it on the OLED.
+3. **Device Control**
+```
+LED:    http://[ESP-IP]:81/slider?value=0-800
+OCR:    http://[ESP-IP]:82/trigger
+Stream: /video_stream/uploaded_image.jpg
+```
 
-## 📜 License
+### Network Settings
+```
+WiFi:
+  SSID: duc
+  Password: 11111111
 
-MIT License
+Servers:
+  Local: http://192.168.1.3
+  NGROK: https://df92-14-254-246-197.ngrok-free.app
+```
 
----
+## Hardware Components
 
-**Author:**  
-DuyDQ123  
-[GitHub Repository](https://github.com/DuyDQ123/Warter-metter)
+### ESP32-CAM Requirements
+- ESP32-CAM AI Thinker board
+- OV2640 camera module
+- LED on GPIO 4
+- FTDI programmer
+
+### Environmental Monitor Setup
+```
+Component  ESP32 Pin    Description
+----------------------------------------
+DHT22      GPIO2       Temp/Humidity sensor
+OLED SDA   GPIO21      Display data
+OLED SCL   GPIO22      Display clock
+```
+
+## Software Requirements
+
+### Development Tools
+1. **Arduino IDE 2.0+**
+   - ESP32 board package
+   - Required libraries
+
+2. **Web Development**
+   - XAMPP v3.3.0+
+   - PHP 7.4+
+   - MySQL 5.7+
+
+3. **Mobile Development**
+   - Flutter 3.0+
+   - Dart SDK 2.17+
+   - Android Studio/VS Code
+
+### Required Libraries
+```
+Arduino:
+- ESP32 Camera Driver
+- ArduinoJson
+- WiFi & HTTPClient
+- DHT sensor library
+- Adafruit SSD1306
+- Adafruit GFX
+
+Flutter:
+- http: ^0.13.0
+- provider: ^6.0.0
+- shared_preferences: ^2.0.0
+- charts_flutter: ^0.12.0
+```
+
+## Installation and Setup
+
+### 1. Server Setup
+```bash
+# 1. Install XAMPP
+# 2. Clone repository
+git clone https://github.com/anhducad1111/iotdigi.git
+cd iotdigi
+
+# 3. Configure database
+mysql -u root < database/schema.sql
+
+# 4. Configure NGROK (optional)
+ngrok http 80
+```
+
+### 2. ESP32 Configuration
+1. Update WiFi settings in config.h
+2. Flash respective firmware
+3. Connect hardware components
+4. Verify through serial monitor
+
+### 3. Mobile App Setup
+```bash
+cd iotdigi
+flutter pub get
+flutter run
+```
+
+## Testing Procedures
+1. **Hardware Verification**
+   - Camera streaming
+   - Sensor readings
+   - Display function
+   - LED control
+
+2. **Software Testing**
+   - API endpoints
+   - Data storage
+   - Real-time updates
+   - Mobile features
+
+## Future Enhancements
+1. **Mobile App**
+   - User authentication
+   - Offline capability
+   - Custom notifications
+
+2. **Web Interface**
+   - Advanced analytics
+   - Multiple device support
+   - Data export options
+
+3. **IoT Devices**
+   - Power management
+   - OTA updates
+   - Additional sensors
+
+## Documentation
+Full documentation for each component:
+- [ESP32-CAM Documentation](esp32cam/README.md)
+- [Environmental Monitor Guide](esp32send/README.md)
+- [Mobile App Guide](iotdigi/README.md)
