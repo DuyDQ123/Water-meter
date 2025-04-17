@@ -63,7 +63,7 @@ void setup() {
 
     // Configure image URL
     networkConfig.imageUrl = "https://" + String(networkConfig.getNgrokUrl()) + 
-                           "/video_upload/video_stream/uploaded_image.jpg";
+                           "/iotdigi-main/video_stream/uploaded_image.jpg";
     Serial.println("Image URL: " + networkConfig.imageUrl);
 
     // Start tasks

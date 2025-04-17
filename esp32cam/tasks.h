@@ -83,7 +83,7 @@ void ocrProcessingTask(void* parameter) {
                             Serial.println("OCR Result: " + String(text));
                             
                             HTTPClient resultHttp;
-                            resultHttp.begin(String(config->getServerUrl()) + "/video_upload/post.php");
+                            resultHttp.begin(String(config->getServerUrl()) + "/iotdigi-main/post.php");
                             resultHttp.addHeader("Content-Type", "application/json");
                             
                             String jsonResult;
@@ -127,7 +127,7 @@ void streamingTask(void* parameter) {
             if (fb) {
                 if (WiFi.status() == WL_CONNECTED) {
                     HTTPClient http;
-                    http.begin(String(config->getServerUrl()) + "/video_upload/post.php");
+                    http.begin(String(config->getServerUrl()) + "/iotdigi-main/post.php");
                     
                     String boundary = HTTP_BOUNDARY;
                     http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);

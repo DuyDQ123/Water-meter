@@ -13,12 +13,12 @@
 #define SCREEN_ADDRESS 0x3C
 
 // Network Configuration
-#define WIFI_SSID "Ucey Kingdom"
-#define WIFI_PASSWORD "215537491"
+#define WIFI_SSID "duy"
+#define WIFI_PASSWORD "11111111"
 
 // Server URLs
-#define POST_URL "http://192.168.47.195/video_upload/post.php"
-#define GET_URL "http://192.168.47.195/video_upload/get.php"
+#define POST_URL "http://192.168.47.195/iotdigi-main/post.php"
+#define GET_URL "http://192.168.47.195/iotdigi-main/get.php"
 
 // Timing Configuration
 #define SENSOR_READ_INTERVAL 10000  // 10 seconds
