@@ -17,8 +17,8 @@
 #define WIFI_PASSWORD "11111111"
 
 // Server URLs
-#define POST_URL "http://192.168.47.195/iotdigi-main/post.php"
-#define GET_URL "http://192.168.47.195/iotdigi-main/get.php"
+#define POST_URL "http://192.168.1.2/iotdigi-main/post.php"
+#define GET_URL "http://192.168.1.2/iotdigi-main/get.php"
 
 // Timing Configuration
 #define SENSOR_READ_INTERVAL 10000  // 10 seconds
