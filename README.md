@@ -1,41 +1,41 @@
-# IoT Environmental Monitoring and OCR System
+# 🌱 IoT Environmental Monitoring and OCR System 📸
 
-## Table of Contents
-1. [Project Overview](#project-overview)
-2. [System Architecture](#system-architecture)
-   - [ESP32-CAM Module](#1-esp32-cam-module)
-   - [ESP32 Environmental Monitor](#2-esp32-environmental-monitor)
-   - [Web Application](#3-web-application)
-   - [Flutter Mobile App](#4-flutter-mobile-app-demo)
-3. [Network Architecture](#network-architecture)
-4. [Hardware Components](#hardware-components)
-5. [Software Requirements](#software-requirements)
-6. [Installation and Setup](#installation-and-setup)
-7. [Testing Procedures](#testing-procedures)
-8. [Future Enhancements](#future-enhancements)
+## 📑 Table of Contents
+1. [📖 Project Overview](#project-overview)
+2. [🧩 System Architecture](#system-architecture)
+   - [📷 ESP32-CAM Module](#1-esp32-cam-module)
+   - [🌡️ ESP32 Environmental Monitor](#2-esp32-environmental-monitor)
+   - [💻 Web Application](#3-web-application)
+   - [📱 Flutter Mobile App (Demo)](#4-flutter-mobile-app-demo)
+3. [🌐 Network Architecture](#network-architecture)
+4. [🔩 Hardware Components](#hardware-components)
+5. [🛠️ Software Requirements](#software-requirements)
+6. [🚀 Installation and Setup](#installation-and-setup)
+7. [🧪 Testing Procedures](#testing-procedures)
+8. [✨ Future Enhancements](#future-enhancements)
 
-## Project Overview
+## 📖 Project Overview
 An integrated IoT system combining:
-1. ESP32-CAM for image capture and OCR
-2. ESP32 environmental monitor
-3. Web application for data visualization
-4. Flutter mobile application (Demo)
+1. 📷 ESP32-CAM for image capture and OCR
+2. 🌡️ ESP32 environmental monitor
+3. 💻 Web application for data visualization
+4. 📱 Flutter mobile application (Demo)
 
-## System Architecture
+## 🧩 System Architecture
 
-### 1. ESP32-CAM Module
+### 1. 📷 ESP32-CAM Module
 - Real-time image streaming (10 FPS)
 - OCR processing with OCR.space API
 - LED brightness control (0-800)
 - FreeRTOS multi-tasking on dual cores
 
-### 2. ESP32 Environmental Monitor
+### 2. 🌡️ ESP32 Environmental Monitor
 - Temperature/humidity monitoring (DHT22)
 - OLED display interface (128x64)
 - OCR text display with auto-scroll
 - 10-second update interval
 
-### 3. Web Application
+### 3. 💻 Web Application
 **Technology Stack:**
 ```
 Backend:  PHP + MySQL
@@ -44,11 +44,11 @@ Server:   Apache (XAMPP)
 ```
 
 **Features:**
-- Live camera stream viewer
-- Environmental data graphs
-- OCR text history & search
-- LED brightness control
-- Data export to CSV
+- 📺 Live camera stream viewer
+- 📊 Environmental data graphs
+- 🔍 OCR text history & search
+- 💡 LED brightness control
+- 📤 Data export to CSV
 
 **File Structure:**
 ```
@@ -61,20 +61,20 @@ video_upload/
 └── video_stream/    # Image storage
 ```
 
-### 4. Flutter Mobile App (Demo)
+### 4. 📱 Flutter Mobile App (Demo)
 **Features:**
-- Real-time data monitoring
-- Push notifications
-- Interactive charts
-- Device control panel
+- 📈 Real-time data monitoring
+- 🔔 Push notifications
+- 📉 Interactive charts
+- 🕹️ Device control panel
 
 **Architecture:**
-- Material Design 3
-- Provider state management
-- REST API integration
-- Local SQLite cache
+- 🎨 Material Design 3
+- 🗂️ Provider state management
+- 🔗 REST API integration
+- 💾 Local SQLite cache
 
-## Network Architecture
+## 🌐 Network Architecture
 
 ### API Endpoints
 1. **Data Upload**
@@ -102,28 +102,28 @@ Response: {
 
 3. **Device Control**
 ```
-LED:    http://[ESP-IP]:81/slider?value=0-800
-OCR:    http://[ESP-IP]:82/trigger
-Stream: /video_stream/uploaded_image.jpg
+💡 LED:    http://[ESP-IP]:81/slider?value=0-800
+🔤 OCR:    http://[ESP-IP]:82/trigger
+📸 Stream: /video_stream/uploaded_image.jpg
 ```
 
 ### Network Settings
 ```
-WiFi:
+📶 WiFi:
   SSID: duy
   Password: 11111111
 
-Servers:
+🌍 Servers:
   Local: http://192.168.1.3
   NGROK: https://df92-14-254-246-197.ngrok-free.app
 ```
 
-## Hardware Components
+## 🔩 Hardware Components
 
 ### ESP32-CAM Requirements
 - ESP32-CAM AI Thinker board
 - OV2640 camera module
-- LED on GPIO 4
+- 💡 LED on GPIO 4
 - FTDI programmer
 
 ### Environmental Monitor Setup
@@ -135,7 +135,7 @@ OLED SDA   GPIO21      Display data
 OLED SCL   GPIO22      Display clock
 ```
 
-## Software Requirements
+## 🛠️ Software Requirements
 
 ### Development Tools
 1. **Arduino IDE 2.0+**
@@ -169,9 +169,9 @@ Flutter:
 - charts_flutter: ^0.12.0
 ```
 
-## Installation and Setup
+## 🚀 Installation and Setup
 
-### 1. Server Setup
+### 1. 🖥️ Server Setup
 ```bash
 # 1. Install XAMPP
 # 2. Clone repository
@@ -185,49 +185,49 @@ mysql -u root < database/schema.sql
 ngrok http 80
 ```
 
-### 2. ESP32 Configuration
+### 2. ⚙️ ESP32 Configuration
 1. Update WiFi settings in config.h
 2. Flash respective firmware
 3. Connect hardware components
 4. Verify through serial monitor
 
-### 3. Mobile App Setup
+### 3. 📱 Mobile App Setup
 ```bash
 cd iotdigi
 flutter pub get
 flutter run
 ```
 
-## Testing Procedures
+## 🧪 Testing Procedures
 1. **Hardware Verification**
-   - Camera streaming
-   - Sensor readings
-   - Display function
-   - LED control
+   - 📸 Camera streaming
+   - 🌡️ Sensor readings
+   - 🖥️ Display function
+   - 💡 LED control
 
 2. **Software Testing**
-   - API endpoints
-   - Data storage
-   - Real-time updates
-   - Mobile features
+   - 🌐 API endpoints
+   - 💾 Data storage
+   - 🔄 Real-time updates
+   - 📲 Mobile features
 
-## Future Enhancements
+## ✨ Future Enhancements
 1. **Mobile App**
-   - User authentication
-   - Offline capability
-   - Custom notifications
+   - 🔐 User authentication
+   - 📴 Offline capability
+   - 🔔 Custom notifications
 
 2. **Web Interface**
-   - Advanced analytics
-   - Multiple device support
-   - Data export options
+   - 📊 Advanced analytics
+   - 🖧 Multiple device support
+   - 📤 Data export options
 
 3. **IoT Devices**
-   - Power management
-   - OTA updates
-   - Additional sensors
+   - 🔋 Power management
+   - 📡 OTA updates
+   - 🌱 Additional sensors
 
-## Documentation
+## 📚 Documentation
 Full documentation for each component:
 - [ESP32-CAM Documentation](esp32cam/README.md)
 - [Environmental Monitor Guide](esp32send/README.md)
