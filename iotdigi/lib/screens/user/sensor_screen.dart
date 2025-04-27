@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class SensorScreen extends StatefulWidget {
   const SensorScreen({super.key});
@@ -11,114 +11,158 @@ class SensorScreen extends StatefulWidget {
 }
 
 class _SensorScreenState extends State<SensorScreen> {
-  final client = MqttServerClient('your_mqtt_broker', '');
   double _temperature = 0.0;
   double _humidity = 0.0;
   bool _isGasDetected = false;
   bool _isConnected = false;
+  bool _isLoading = true;
+  String? _errorMessage;
+  Timer? _timer;
+  List<Map<String, dynamic>> _sensorHistory = [];
 
   @override
   void initState() {
     super.initState();
-    _connectMQTT();
+    _fetchSensorData();
+    // Fetch data every 5 seconds
+    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _fetchSensorData();
+    });
   }
 
   @override
   void dispose() {
-    client.disconnect();
+    _timer?.cancel();
     super.dispose();
   }
 
-  Future<void> _connectMQTT() async {
-    client.logging(on: true);
-    client.port = 1883;
-    client.keepAlivePeriod = 60;
-    client.onConnected = _onConnected;
-    client.onDisconnected = _onDisconnected;
-
-    final connMessage = MqttConnectMessage()
-        .withClientIdentifier('flutter_client')
-        .startClean()
-        .withWillQos(MqttQos.atLeastOnce);
-
-    client.connectionMessage = connMessage;
+  Future<void> _fetchSensorData() async {
+    if (!_isLoading) {
+      setState(() {
+        _errorMessage = null;
+      });
+    }
 
     try {
-      await client.connect();
-    } catch (e) {
-      debugPrint('MQTT connection failed: $e');
-      client.disconnect();
-    }
-  }
-
-  void _onConnected() {
-    setState(() => _isConnected = true);
-    
-    client.subscribe('sensors/dht22', MqttQos.atLeastOnce);
-    client.subscribe('sensors/mq2', MqttQos.atLeastOnce);
-
-    client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
-      for (var message in messages) {
-        final payload = (message.payload as MqttPublishMessage).payload.message;
-        final topic = message.topic;
-        final data = json.decode(utf8.decode(payload));
-
-        if (topic == 'sensors/dht22') {
+      // Replace YOUR_PC_IP_ADDRESS with your computer's local IP address (e.g., 192.168.1.100)
+      final response = await http.get(Uri.parse('http://192.168.137.1/iotdigi-main/get.php'));
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['status'] == 'success' && data['latest_sensor_reading'] != null) {
           setState(() {
-            _temperature = data['temperature'].toDouble();
-            _humidity = data['humidity'].toDouble();
+            _temperature = double.parse(data['latest_sensor_reading']['temperature'].toString());
+            _humidity = double.parse(data['latest_sensor_reading']['humidity'].toString());
+            _isConnected = true;
+            _isLoading = false;
+            _errorMessage = null;
+            _sensorHistory = List<Map<String, dynamic>>.from(data['sensor_readings']);
           });
-        } else if (topic == 'sensors/mq2') {
-          setState(() {
-            _isGasDetected = data['gas_detected'];
-          });
+        } else {
+          throw Exception('Invalid data format');
         }
+      } else {
+        throw Exception('Server returned ${response.statusCode}');
       }
-    });
-  }
-
-  void _onDisconnected() {
-    setState(() => _isConnected = false);
+    } catch (e) {
+      setState(() {
+        _isConnected = false;
+        _isLoading = false;
+        _errorMessage = 'Failed to fetch sensor data: ${e.toString()}';
+      });
+      debugPrint('Error fetching sensor data: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchSensorData,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildConnectionStatus(),
-          const SizedBox(height: 24),
-          _buildSensorCard(
-            title: 'Temperature & Humidity',
-            child: Column(
-              children: [
-                _buildSensorValue(
-                  icon: Icons.thermostat,
-                  label: 'Temperature',
-                  value: '$_temperature°C',
-                ),
-                const SizedBox(height: 16),
-                _buildSensorValue(
-                  icon: Icons.water_drop,
-                  label: 'Humidity',
-                  value: '$_humidity%',
-                ),
-              ],
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildConnectionStatus(),
+            const SizedBox(height: 24),
+            _buildSensorCard(
+              title: 'Current Readings',
+              child: Column(
+                children: [
+                  _buildSensorValue(
+                    icon: Icons.thermostat,
+                    label: 'Temperature',
+                    value: '${_temperature.toStringAsFixed(1)}°C',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildSensorValue(
+                    icon: Icons.water_drop,
+                    label: 'Humidity',
+                    value: '${_humidity.toStringAsFixed(1)}%',
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildSensorCard(
-            title: 'Gas Detection',
-            child: _buildSensorValue(
-              icon: Icons.warning,
-              label: 'Gas Status',
-              value: _isGasDetected ? 'Gas Detected!' : 'Normal',
-              valueColor: _isGasDetected ? Colors.red : Colors.green,
+            const SizedBox(height: 24),
+            _buildSensorCard(
+              title: 'Sensor History',
+              child: Column(
+                children: _sensorHistory.map((reading) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          reading['timestamp'],
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Icon(Icons.thermostat, size: 16, color: Colors.orange),
+                            Text(' ${reading['temperature']}°C  '),
+                            Icon(Icons.water_drop, size: 16, color: Colors.blue),
+                            Text(' ${reading['humidity']}%'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

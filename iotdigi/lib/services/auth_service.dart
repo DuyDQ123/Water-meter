@@ -1,59 +1,46 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService with ChangeNotifier {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  User? _user;
+  bool _isAuthenticated = false;
   bool _isAdmin = false;
+  String? _email;
 
-  User? get user => _user;
+  bool get isAuthenticated => _isAuthenticated;
   bool get isAdmin => _isAdmin;
-
-  AuthService() {
-    _auth.authStateChanges().listen((User? user) {
-      _user = user;
-      notifyListeners();
-    });
-  }
+  String? get userEmail => _email;
 
   Future<String?> login(String email, String password) async {
-    try {
-      final UserCredential result = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _user = result.user;
+    // Mock authentication for testing
+    if (email.isNotEmpty && password.isNotEmpty) {
+      _isAuthenticated = true;
+      _email = email;
+      _isAdmin = email.contains('admin');
       
-      // Check if user is admin (You would typically check this against a database)
+      // Store admin status
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      _isAdmin = prefs.getBool('isAdmin') ?? false;
+      await prefs.setBool('isAdmin', _isAdmin);
       
       notifyListeners();
       return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message;
     }
+    return 'Invalid email or password';
   }
 
   Future<String?> register(String email, String password) async {
-    try {
-      final UserCredential result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _user = result.user;
+    if (email.isNotEmpty && password.isNotEmpty) {
+      _isAuthenticated = true;
+      _email = email;
       notifyListeners();
       return null;
-    } on FirebaseAuthException catch (e) {
-      return e.message;
     }
+    return 'Registration failed';
   }
 
   Future<void> logout() async {
-    await _auth.signOut();
-    _user = null;
+    _isAuthenticated = false;
     _isAdmin = false;
+    _email = null;
     notifyListeners();
   }
 }

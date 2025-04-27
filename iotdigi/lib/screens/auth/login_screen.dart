@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
-import '../user/home_screen.dart';
-import '../admin/admin_home_screen.dart';
-import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,13 +44,11 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       if (error == null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => authService.isAdmin 
-              ? const AdminHomeScreen()
-              : const HomeScreen(),
-          ),
-        );
+        if (authService.isAdmin) {
+          Navigator.pushReplacementNamed(context, '/admin');
+        } else {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       }
     }
   }
@@ -133,11 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const RegisterScreen(),
-                        ),
-                      );
+                      Navigator.pushNamed(context, '/register');
                     },
                     child: const Text('Don\'t have an account? Register'),
                   ),
