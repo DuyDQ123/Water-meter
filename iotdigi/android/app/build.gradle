@@ -7,12 +7,30 @@ plugins {
 
 android {
     namespace = "com.example.iotdigi"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    defaultConfig {
+        minSdk = 24
+        targetSdk = 35
+    }
+
+    dependencies {
+        coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.2'
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     kotlinOptions {
@@ -37,6 +55,10 @@ android {
             signingConfig = signingConfigs.debug
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }
 
 flutter {

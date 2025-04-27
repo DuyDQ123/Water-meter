@@ -13,7 +13,7 @@ class SensorScreen extends StatefulWidget {
 class _SensorScreenState extends State<SensorScreen> {
   double _temperature = 0.0;
   double _humidity = 0.0;
-  bool _isGasDetected = false;
+  final bool _isGasDetected = false;
   bool _isConnected = false;
   bool _isLoading = true;
   String? _errorMessage;
@@ -45,7 +45,7 @@ class _SensorScreenState extends State<SensorScreen> {
 
     try {
       // Replace YOUR_PC_IP_ADDRESS with your computer's local IP address (e.g., 192.168.1.100)
-      final response = await http.get(Uri.parse('http://192.168.137.1/iotdigi-main/get.php'));
+      final response = await http.get(Uri.parse('http://192.168.1.159/iotdigi-main/get.php'));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

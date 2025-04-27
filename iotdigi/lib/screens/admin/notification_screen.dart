@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:convert';
 
 class Alert {
@@ -31,12 +30,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
   final client = MqttServerClient('your_mqtt_broker', '');
   final List<Alert> _alerts = [];
   bool _isConnected = false;
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  // Temporarily removed notifications
+  // final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
 
   @override
   void initState() {
     super.initState();
-    _initNotifications();
+    // _initNotifications();
     _connectMQTT();
   }
 
@@ -46,38 +46,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
     super.dispose();
   }
 
-  Future<void> _initNotifications() async {
-    const initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initializationSettingsIOS = DarwinInitializationSettings();
-    const initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
-    
-    await _notifications.initialize(initializationSettings);
-  }
+  // Temporarily removed notifications
+  // Future<void> _initNotifications() async {
+  //   // Implementation removed
+  // }
 
-  Future<void> _showNotification(Alert alert) async {
-    const androidDetails = AndroidNotificationDetails(
-      'alerts_channel',
-      'System Alerts',
-      channelDescription: 'Important system alerts and warnings',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const iosDetails = DarwinNotificationDetails();
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _notifications.show(
-      _alerts.length,
-      'Alert: ${alert.type}',
-      alert.message,
-      details,
-    );
-  }
+  // Future<void> _showNotification(Alert alert) async {
+  //   // Implementation removed
+  // }
 
   Future<void> _connectMQTT() async {
     client.logging(on: true);
@@ -130,7 +106,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           setState(() {
             _alerts.insert(0, alert);
           });
-          _showNotification(alert);
+          // _showNotification(alert);
         }
       }
     });
