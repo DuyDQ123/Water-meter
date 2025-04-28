@@ -1,103 +1,106 @@
 # 🌟 IoT Digi - Smart IoT Platform
 
-[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
-[![ESP32](https://img.shields.io/badge/ESP32-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com)
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)  
+[![ESP32](https://img.shields.io/badge/ESP32-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com)  
 [![PHP](https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net)
 
 ## 📱 Overview
 
-IoT Digi là một nền tảng IoT thông minh cho phép:
-- 📸 Giám sát camera ESP32
-- 💡 Điều khiển đèn LED 
-- 📊 Theo dõi cảm biến
-- 📖 Nhận dạng văn bản OCR
-- 👥 Quản lý người dùng và thiết bị
+IoT Digi is a smart IoT platform that allows you to:
+- 📸 Monitor ESP32 camera streams
+- 💡 Control LED lights
+- 📊 Track sensor data
+- 📖 Perform OCR (Optical Character Recognition)
+- 👥 Manage users and devices
 
-## 🚀 Bắt đầu
+## 🚀 Getting Started
 
-### Yêu cầu tiên quyết
+### Prerequisites
 
 - [x] XAMPP
 - [x] Flutter SDK
 - [x] Arduino IDE
 - [x] ESP32 board
-- [x] ESP8266 board (tùy chọn)
+- [x] ESP8266 board (optional)
 
-### 🔧 Cài đặt
+### 🔧 Installation
 
-#### 1. Cài đặt Backend
+#### 1. Set Up the Backend
 
-1. Cài đặt XAMPP và khởi động Apache + MySQL
-2. Copy toàn bộ project vào thư mục `htdocs`
-3. Tạo database và tables:
-```sql
+1. Install XAMPP and start Apache + MySQL services.
+2. Copy the entire project into the `htdocs` directory.
+3. Create the database and tables:
+```bash
 php setup_auth_db.php
-```
+2. Set Up the ESP32 Camera
+Open the esp32cam folder in Arduino IDE.
 
-#### 2. Cài đặt ESP32 Camera
+Update config.h with your WiFi credentials:
 
-1. Mở thư mục `esp32cam` trong Arduino IDE
-2. Cập nhật `config.h` với thông tin WiFi của bạn:
-```cpp
 #define WIFI_SSID "your_wifi_ssid"
 #define WIFI_PASS "your_wifi_password"
-```
-3. Upload code lên ESP32-CAM
+Upload the code to your ESP32-CAM board.
 
-#### 3. Cài đặt ESP32 Sender (Tùy chọn)
+3. Set Up the ESP32 Sender (Optional)
+Open the esp32send folder in Arduino IDE.
 
-1. Mở thư mục `esp32send` trong Arduino IDE 
-2. Cập nhật `config.h` tương tự như trên
-3. Upload code
+Update config.h similarly.
 
-#### 4. Cài đặt Flutter App
+Upload the code to your ESP32 device.
 
-1. Di chuyển vào thư mục Flutter:
-```bash
+4. Set Up the Flutter App
+Navigate to the Flutter project folder:
+
 cd iotdigi
-```
+Install dependencies:
 
-2. Cài đặt dependencies:
-```bash
 flutter pub get
-```
+Run the app:
 
-3. Chạy ứng dụng:
-```bash
 flutter run
-```
+📱 App Usage
+🔐 Login/Register
+Use the registration screen to create a new account.
 
-## 📱 Sử dụng App
+Login with your registered credentials.
 
-### 🔐 Đăng nhập/Đăng ký
-- Sử dụng màn hình đăng ký để tạo tài khoản mới
-- Đăng nhập với tài khoản đã tạo
+🎮 Main Features
+Camera Stream: View real-time video feed from ESP32-CAM.
 
-### 🎮 Tính năng chính
-- **Camera Stream**: Xem video trực tiếp từ ESP32-CAM
-- **LED Control**: Điều khiển đèn LED
-- **Sensor Data**: Theo dõi dữ liệu cảm biến
-- **OCR**: Nhận dạng văn bản từ hình ảnh
+LED Control: Control LED lights remotely.
 
-### 👑 Admin Panel
-- Quản lý danh sách thiết bị
-- Theo dõi thông báo
-- Quản lý người dùng
+Sensor Data: Monitor sensor readings.
 
-## 🤝 Đóng góp
+OCR: Extract text from images.
 
-Mọi đóng góp đều được chào đón! Vui lòng:
-1. Fork project
-2. Tạo branch mới (`git checkout -b feature/AmazingFeature`)
-3. Commit thay đổi (`git commit -m 'Add some AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Mở Pull Request
+👑 Admin Panel
+Manage connected devices.
 
-## 📝 License
+Monitor notifications.
 
-MIT License - xem [LICENSE](LICENSE) để biết thêm chi tiết
+Manage user accounts.
 
-## 🙏 Cảm ơn
-- Flutter team
-- ESP32 community
-- Tất cả các contributor
+🤝 Contributions
+All contributions are welcome! Please:
+
+Fork the project.
+
+Create a new branch (git checkout -b feature/AmazingFeature).
+
+Commit your changes (git commit -m 'Add some AmazingFeature').
+
+Push to the branch (git push origin feature/AmazingFeature).
+
+Open a Pull Request.
+
+📝 License
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+🙏 Acknowledgments
+Flutter team
+
+ESP32 community
+
+All contributors
+
+
