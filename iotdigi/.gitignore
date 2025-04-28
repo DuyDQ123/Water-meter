@@ -41,8 +41,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-linux/
-/macos/
-/test/
-/windows/
-/web-app/
+/iotdigi/linux/
+/iotdigi/macos/
+/iotdigi/test/
+/iotdigi/windows/
+/iotdigi/web/
+/iotdigi/web-app/
