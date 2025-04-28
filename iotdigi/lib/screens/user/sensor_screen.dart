@@ -45,7 +45,7 @@ class _SensorScreenState extends State<SensorScreen> {
 
     try {
       // Replace YOUR_PC_IP_ADDRESS with your computer's local IP address (e.g., 192.168.1.100)
-      final response = await http.get(Uri.parse('http://192.168.1.159/iotdigi-main/get.php'));
+      final response = await http.get(Uri.parse('http://192.168.1.141/iotdigi-main/get.php'));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
