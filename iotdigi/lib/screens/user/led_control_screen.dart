@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
-import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'dart:async';
 
 class LedControlScreen extends StatefulWidget {
   const LedControlScreen({super.key});
@@ -11,95 +10,54 @@ class LedControlScreen extends StatefulWidget {
 }
 
 class _LedControlScreenState extends State<LedControlScreen> {
-  final client = MqttServerClient('your_mqtt_broker', '');
   double _brightness = 0.0;
-  bool _isConnected = false;
+  final bool _isConnected = true;
   bool _isSending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _connectMQTT();
-  }
-
-  @override
-  void dispose() {
-    client.disconnect();
-    super.dispose();
-  }
-
-  Future<void> _connectMQTT() async {
-    client.logging(on: true);
-    client.port = 1883;
-    client.keepAlivePeriod = 60;
-    client.onConnected = _onConnected;
-    client.onDisconnected = _onDisconnected;
-
-    final connMessage = MqttConnectMessage()
-        .withClientIdentifier('flutter_client_led')
-        .startClean()
-        .withWillQos(MqttQos.atLeastOnce);
-
-    client.connectionMessage = connMessage;
-
-    try {
-      await client.connect();
-    } catch (e) {
-      debugPrint('MQTT connection failed: $e');
-      client.disconnect();
-    }
-  }
-
-  void _onConnected() {
-    setState(() => _isConnected = true);
-    
-    // Subscribe to LED status updates
-    client.subscribe('esp32cam/led/status', MqttQos.atLeastOnce);
-
-    client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
-      for (var message in messages) {
-        final payload = (message.payload as MqttPublishMessage).payload.message;
-        final data = json.decode(utf8.decode(payload));
-        
-        if (mounted) {
-          setState(() {
-            _brightness = data['brightness'].toDouble();
-          });
-        }
-      }
-    });
-  }
-
-  void _onDisconnected() {
-    setState(() => _isConnected = false);
-  }
+  static const String esp32CamIp = '192.168.137.159';
 
   Future<void> _updateBrightness(double value) async {
-    if (!_isConnected || _isSending) return;
+    if (_isSending) return;
 
     setState(() {
       _brightness = value;
       _isSending = true;
     });
 
-    final builder = MqttClientPayloadBuilder();
-    builder.addString(json.encode({
-      'brightness': value.round(),
-    }));
+    try {
+      // Convert percentage (0-100) to ESP32 range (0-800)
+      final scaledValue = (value * 8).round();
+      
+      final response = await http.get(
+        Uri.parse('http://$esp32CamIp:81/slider?value=$scaledValue'),
+      ).timeout(const Duration(seconds: 3));
 
-    client.publishMessage(
-      'esp32cam/led/control',
-      MqttQos.atLeastOnce,
-      builder.payload!,
-    );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update brightness');
+      }
 
-    // Add a small delay to prevent too many messages
-    await Future.delayed(const Duration(milliseconds: 100));
-    
-    if (mounted) {
-      setState(() {
-        _isSending = false;
-      });
+      // Small delay to prevent rapid requests
+      await Future.delayed(const Duration(milliseconds: 100));
+
+    } catch (e) {
+      debugPrint('Error updating brightness: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update brightness: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        // Reset brightness on error
+        setState(() {
+          _brightness = 0;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
     }
   }
 
@@ -158,7 +116,10 @@ class _LedControlScreenState extends State<LedControlScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.lightbulb),
+                Icon(
+                  Icons.lightbulb,
+                  color: _brightness > 0 ? Colors.yellow : Colors.grey,
+                ),
                 const SizedBox(width: 8),
                 const Text(
                   'LED Brightness',
@@ -204,11 +165,15 @@ class _LedControlScreenState extends State<LedControlScreen> {
   }
 
   Widget _buildPresetButton(String label, double value) {
+    final bool isActive = _brightness == value;
+    
     return ElevatedButton(
       onPressed: _isConnected ? () => _updateBrightness(value) : null,
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         minimumSize: const Size(0, 36),
+        backgroundColor: isActive ? Theme.of(context).primaryColor : null,
+        foregroundColor: isActive ? Colors.white : null,
       ),
       child: Text(label),
     );

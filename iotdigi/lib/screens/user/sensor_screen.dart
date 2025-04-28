@@ -24,9 +24,15 @@ class _SensorScreenState extends State<SensorScreen> {
   void initState() {
     super.initState();
     _fetchSensorData();
-    // Fetch data every 5 seconds
+    _startPeriodicFetch();
+  }
+
+  void _startPeriodicFetch() {
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      _fetchSensorData();
+      if (mounted) {
+        _fetchSensorData();
+      }
     });
   }
 
@@ -43,10 +49,19 @@ class _SensorScreenState extends State<SensorScreen> {
       });
     }
 
+    final client = http.Client();
     try {
-      // Replace YOUR_PC_IP_ADDRESS with your computer's local IP address (e.g., 192.168.1.100)
-      final response = await http.get(Uri.parse('http://192.168.1.141/iotdigi-main/get.php'));
-      
+      final response = await client.get(
+        Uri.parse('http://192.168.1.159/iotdigi-main/get.php?type=dht'),
+      ).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw TimeoutException('Connection timed out. Please check your connection.');
+        },
+      );
+
+      if (!mounted) return;
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success' && data['latest_sensor_reading'] != null) {
@@ -59,47 +74,62 @@ class _SensorScreenState extends State<SensorScreen> {
             _sensorHistory = List<Map<String, dynamic>>.from(data['sensor_readings']);
           });
         } else {
-          throw Exception('Invalid data format');
+          throw Exception('Invalid data format received from server');
         }
       } else {
-        throw Exception('Server returned ${response.statusCode}');
+        throw Exception('Server error: ${response.statusCode}');
+      }
+    } on TimeoutException catch (e) {
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _isLoading = false;
+          _errorMessage = e.message;
+        });
       }
     } catch (e) {
-      setState(() {
-        _isConnected = false;
-        _isLoading = false;
-        _errorMessage = 'Failed to fetch sensor data: ${e.toString()}';
-      });
-      debugPrint('Error fetching sensor data: $e');
+      if (mounted) {
+        setState(() {
+          _isConnected = false;
+          _isLoading = false;
+          _errorMessage = 'Error: ${e.toString()}';
+        });
+      }
+    } finally {
+      client.close();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _fetchSensorData,
-              child: const Text('Retry'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() => _isLoading = true);
+                  _fetchSensorData();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -141,7 +171,7 @@ class _SensorScreenState extends State<SensorScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          reading['timestamp'],
+                          reading['timestamp'] ?? '',
                           style: const TextStyle(
                             fontSize: 14,
                             color: Colors.grey,
@@ -149,9 +179,9 @@ class _SensorScreenState extends State<SensorScreen> {
                         ),
                         Row(
                           children: [
-                            Icon(Icons.thermostat, size: 16, color: Colors.orange),
+                            const Icon(Icons.thermostat, size: 16, color: Colors.orange),
                             Text(' ${reading['temperature']}°C  '),
-                            Icon(Icons.water_drop, size: 16, color: Colors.blue),
+                            const Icon(Icons.water_drop, size: 16, color: Colors.blue),
                             Text(' ${reading['humidity']}%'),
                           ],
                         ),

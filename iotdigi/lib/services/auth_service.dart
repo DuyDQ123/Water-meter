@@ -12,7 +12,7 @@ class AuthService with ChangeNotifier {
   bool get isAdmin => _isAdmin;
   String? get userEmail => _email;
 
-  static const String baseUrl = 'http://192.168.1.141/iotdigi-main';
+  static const String baseUrl = 'http://192.168.1.159/iotdigi-main';
 
   Future<String?> login(String email, String password) async {
     try {
@@ -23,28 +23,47 @@ class AuthService with ChangeNotifier {
           'email': email,
           'password': password,
         }),
-      );
+      ).timeout(const Duration(seconds: 5));
 
-      final data = json.decode(response.body);
+      if (response.statusCode != 200) {
+        return 'Server error: ${response.statusCode}';
+      }
 
-      if (response.statusCode == 200 && data['success'] == true) {
-        _isAuthenticated = true;
-        _email = data['user']['email'];
-        _isAdmin = data['user']['isAdmin'];
+      Map<String, dynamic>? data;
+      try {
+        data = json.decode(response.body);
+      } catch (e) {
+        return 'Invalid server response';
+      }
 
-        // Store user data
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isAuthenticated', true);
-        await prefs.setBool('isAdmin', _isAdmin);
-        await prefs.setString('email', _email!);
+      if (data == null || !data.containsKey('success')) {
+        return 'Invalid response format';
+      }
 
-        notifyListeners();
-        return null;
+      if (data['success'] == true) {
+        try {
+          _isAuthenticated = true;
+          _email = data['user']['email'];
+          _isAdmin = data['user']['isAdmin'];
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isAuthenticated', true);
+          await prefs.setBool('isAdmin', _isAdmin);
+          await prefs.setString('email', _email!);
+
+          notifyListeners();
+          return null;
+        } catch (e) {
+          return 'Error saving user data: $e';
+        }
       }
 
       return data['error'] ?? 'Login failed';
     } catch (e) {
-      return 'Network error: $e';
+      if (e.toString().contains('TimeoutException')) {
+        return 'Connection timed out. Please try again.';
+      }
+      return 'Network error. Please check your connection.';
     }
   }
 

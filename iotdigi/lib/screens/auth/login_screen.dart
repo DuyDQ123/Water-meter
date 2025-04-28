@@ -31,25 +31,38 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final error = await authService.login(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final error = await authService.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
 
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = error;
-      });
+      if (!mounted) return;
 
-      if (error == null) {
-        if (authService.isAdmin) {
-          Navigator.pushReplacementNamed(context, '/admin');
-        } else {
-          Navigator.pushReplacementNamed(context, '/home');
-        }
+      if (error != null) {
+        setState(() {
+          _errorMessage = error;
+          _isLoading = false;
+        });
+        return;
       }
+
+      // Clear password on successful login
+      _passwordController.clear();
+
+      if (authService.isAdmin) {
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Unexpected error occurred';
+        _isLoading = false;
+      });
     }
   }
 
