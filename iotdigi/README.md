@@ -1,17 +1,17 @@
 # 🌟 IoT Digi - Smart IoT Platform
 
-[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)  
-[![ESP32](https://img.shields.io/badge/ESP32-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com)  
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![ESP32](https://img.shields.io/badge/ESP32-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com)
 [![PHP](https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net)
 
 ## 📱 Overview
 
-IoT Digi is a smart IoT platform that allows you to:
-- 📸 Monitor ESP32 camera streams
-- 💡 Control LED lights
-- 📊 Track sensor data
-- 📖 Perform OCR (Optical Character Recognition)
-- 👥 Manage users and devices
+IoT Digi is a smart IoT platform that enables:
+- 📸 ESP32 camera monitoring
+- 💡 LED control
+- 📊 Sensor monitoring
+- 📖 OCR text recognition
+- 👥 User and device management
 
 ## 🚀 Getting Started
 
@@ -25,82 +25,79 @@ IoT Digi is a smart IoT platform that allows you to:
 
 ### 🔧 Installation
 
-#### 1. Set Up the Backend
+#### 1. Backend Setup
 
-1. Install XAMPP and start Apache + MySQL services.
-2. Copy the entire project into the `htdocs` directory.
-3. Create the database and tables:
-```bash
+1. Install XAMPP and start Apache + MySQL
+2. Copy the entire project to the `htdocs` directory
+3. Create database and tables:
+```sql
 php setup_auth_db.php
-2. Set Up the ESP32 Camera
-Open the esp32cam folder in Arduino IDE.
+```
 
-Update config.h with your WiFi credentials:
+#### 2. ESP32 Camera Setup
 
+1. Open the `esp32cam` folder in Arduino IDE
+2. Update `config.h` with your WiFi information:
+```cpp
 #define WIFI_SSID "your_wifi_ssid"
 #define WIFI_PASS "your_wifi_password"
-Upload the code to your ESP32-CAM board.
+```
+3. Upload code to ESP32-CAM
 
-3. Set Up the ESP32 Sender (Optional)
-Open the esp32send folder in Arduino IDE.
+#### 3. ESP32 Sender Setup (Optional)
 
-Update config.h similarly.
+1. Open the `esp32send` folder in Arduino IDE
+2. Update `config.h` similarly as above
+3. Upload code
 
-Upload the code to your ESP32 device.
+#### 4. Flutter App Setup
 
-4. Set Up the Flutter App
-Navigate to the Flutter project folder:
-
+1. Navigate to the Flutter directory:
+```bash
 cd iotdigi
-Install dependencies:
+```
 
+2. Install dependencies:
+```bash
 flutter pub get
-Run the app:
+```
 
+3. Run the application:
+```bash
 flutter run
-📱 App Usage
-🔐 Login/Register
-Use the registration screen to create a new account.
+```
 
-Login with your registered credentials.
+## 📱 Using the App
 
-🎮 Main Features
-Camera Stream: View real-time video feed from ESP32-CAM.
+### 🔐 Login/Register
+- Use the registration screen to create a new account
+- Login with your created account
 
-LED Control: Control LED lights remotely.
+### 🎮 Main Features
+- **Camera Stream**: View live video from ESP32-CAM
+- **LED Control**: Control LED lights
+- **Sensor Data**: Monitor sensor data
+- **OCR**: Text recognition from images
 
-Sensor Data: Monitor sensor readings.
+### 👑 Admin Panel
+- Manage device list
+- Monitor notifications
+- User management
 
-OCR: Extract text from images.
+## 🤝 Contributing
 
-👑 Admin Panel
-Manage connected devices.
+Contributions are welcome! Please:
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-Monitor notifications.
+## 📝 License
 
-Manage user accounts.
+MIT License - see [LICENSE](LICENSE) for more details
 
-🤝 Contributions
-All contributions are welcome! Please:
-
-Fork the project.
-
-Create a new branch (git checkout -b feature/AmazingFeature).
-
-Commit your changes (git commit -m 'Add some AmazingFeature').
-
-Push to the branch (git push origin feature/AmazingFeature).
-
-Open a Pull Request.
-
-📝 License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-🙏 Acknowledgments
-Flutter team
-
-ESP32 community
-
-All contributors
-
-
+## 🙏 Acknowledgments
+- Flutter team
+- ESP32 community
+- All contributors
