@@ -61,9 +61,9 @@ void setup() {
         return;
     }
 
-    // Configure image URL
-    networkConfig.imageUrl = "https://" + String(networkConfig.getNgrokUrl()) + 
-                           "/iotdigi-main/video_stream/uploaded_image.jpg";
+    // Configure image URL for OCR (must be public accessible)
+    networkConfig.imageUrl = "https://" + String(networkConfig.getNgrokUrl()) +
+                            "/iotdigi-main/video_stream/uploaded_image.jpg";
     Serial.println("Image URL: " + networkConfig.imageUrl);
 
     // Start tasks

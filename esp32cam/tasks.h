@@ -27,10 +27,9 @@ void ledControlTask(void* parameter) {
             String request = client.readStringUntil('\r');
             if (request.indexOf("GET /slider?value=") >= 0) {
                 int value = request.substring(request.indexOf("value=") + 6).toInt();
-                value = constrain(value, 0, 800);
-                int pwmValue = map(value, 0, 800, 0, 255);
+                value = constrain(value, 0, 100);
+                int pwmValue = map(value, 0, 100, 0, 255);
                 analogWrite(LED_PIN, pwmValue);
-                Serial.printf("LED: %d (PWM: %d)\n", value, pwmValue);
                 
                 client.println("HTTP/1.1 200 OK");
                 client.println("Content-Type: text/plain");
@@ -91,7 +90,10 @@ void ocrProcessingTask(void* parameter) {
                             resultDoc["ocr_text"] = text;
                             serializeJson(resultDoc, jsonResult);
                             
-                            resultHttp.POST(jsonResult);
+                            int resultCode = resultHttp.POST(jsonResult);
+                            if (resultCode != HTTP_CODE_OK) {
+                                Serial.printf("Failed to send OCR result, HTTP code: %d\n", resultCode);
+                            }
                             resultHttp.end();
                         }
                     }
@@ -127,7 +129,8 @@ void streamingTask(void* parameter) {
             if (fb) {
                 if (WiFi.status() == WL_CONNECTED) {
                     HTTPClient http;
-                    http.begin(String(config->getServerUrl()) + "/iotdigi-main/post.php");
+                    String url = String(config->getServerUrl()) + "/iotdigi-main/post.php";
+                    http.begin(url);
                     
                     String boundary = HTTP_BOUNDARY;
                     http.addHeader("Content-Type", "multipart/form-data; boundary=" + boundary);
@@ -146,10 +149,21 @@ void streamingTask(void* parameter) {
                         pos += fb->len;
                         memcpy(buffer + pos, tail.c_str(), tail.length());
                         
-                        http.POST(buffer, pos + tail.length());
+                        int httpCode = http.POST(buffer, pos + tail.length());
+                        
+                        if (httpCode != HTTP_CODE_OK) {
+                            Serial.printf("Image upload failed, HTTP code: %d\n", httpCode);
+                            Serial.printf("URL: %s\n", url.c_str());
+                            Serial.printf("Response: %s\n", http.getString().c_str());
+                        }
+                        
                         free(buffer);
+                    } else {
+                        Serial.println("Failed to allocate memory for image upload");
                     }
                     http.end();
+                } else {
+                    Serial.println("WiFi disconnected, cannot upload image");
                 }
                 Camera::release(fb);
                 lastCapture = millis();

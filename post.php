@@ -55,16 +55,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $upload_dir = 'video_stream/';
         $file_path = $upload_dir . 'uploaded_image.jpg';
         
+        error_log("Received file upload request. File details: " . print_r($_FILES['file'], true));
+        
+        if (!is_dir($upload_dir)) {
+            error_log("Creating upload directory");
+            mkdir($upload_dir, 0777, true);
+        }
+        
+        if (!is_writable($upload_dir)) {
+            error_log("Upload directory is not writable");
+            chmod($upload_dir, 0777);
+        }
+        
         if (move_uploaded_file($_FILES['file']['tmp_name'], $file_path)) {
+            error_log("File uploaded successfully to: " . $file_path);
             $response = [
                 'status' => 'success',
                 'message' => 'File uploaded successfully',
                 'filename' => 'uploaded_image.jpg'
             ];
         } else {
+            $error = error_get_last();
+            error_log("Failed to move uploaded file. Error: " . ($error ? $error['message'] : 'Unknown error'));
             $response = [
                 'status' => 'error',
-                'message' => 'Error uploading file'
+                'message' => 'Error uploading file: ' . ($error ? $error['message'] : 'Unknown error')
             ];
         }
     }
