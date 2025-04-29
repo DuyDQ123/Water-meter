@@ -21,7 +21,7 @@ class _StatsScreenState extends State<StatsScreen> {
   bool _isLoading = true;
   String? _error;
 
-  static const String serverUrl = 'http://192.168.1.169/iotdigi-main';
+  static const String serverUrl = 'http://192.168.1.14/iotdigi-main';
   static const List<Map<String, dynamic>> waterRates = [
     {'limit': 10, 'price': 5973, 'description': '0-10m³: 5.973 VNĐ/m³'},
     {'limit': 10, 'price': 7052, 'description': '10-20m³: 7.052 VNĐ/m³'},
@@ -183,55 +183,6 @@ class _StatsScreenState extends State<StatsScreen> {
           _buildChart('Gas Level History', _gasData, 'gas_level', Colors.purple, 'ppm'),
           _buildChart('Water Usage History', _waterUsageData, 'ocr_text', Colors.green, 'm³'),
 
-          // Water Bill Card
-          if (_totalBill != null)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Water Bill Estimate',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Total: ${_totalBill!.toStringAsFixed(0)} VNĐ',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                    const Divider(),
-                    ...waterRates.map((rate) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(rate['description'] as String),
-                    )),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const BillScreen(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.receipt_long),
-                        label: const Text('View Detailed Bill'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );
@@ -255,21 +206,15 @@ class ChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    final paint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+    final values = data.map((e) => double.parse(e[valueKey].toString())).toList();
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
+    final minValue = values.reduce((a, b) => a < b ? a : b);
+    final range = maxValue - minValue;
 
     final textPainter = TextPainter(
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.right,
     );
-
-    final path = Path();
-    final values = data.map((e) => double.parse(e[valueKey].toString())).toList();
-    final maxValue = values.reduce((a, b) => a > b ? a : b);
-    final minValue = values.reduce((a, b) => a < b ? a : b);
-    final range = maxValue - minValue;
 
     // Draw grid lines and labels
     for (int i = 0; i <= 4; i++) {
@@ -294,36 +239,67 @@ class ChartPainter extends CustomPainter {
       textPainter.paint(canvas, Offset(-textPainter.width - 4, y - textPainter.height / 2));
     }
 
-    // Draw data points and lines
-    final pointWidth = size.width / (data.length - 1);
-    path.moveTo(
-      0,
-      size.height - ((values.first - minValue) / range * size.height),
-    );
+    if (valueKey == 'ocr_text') {
+      // Bar chart for water usage
+      final barWidth = (size.width / data.length) * 0.8;
+      final spacing = (size.width / data.length) * 0.2;
+      final barPaint = Paint()
+        ..color = lineColor
+        ..style = PaintingStyle.fill;
 
-    for (int i = 1; i < data.length; i++) {
-      path.lineTo(
-        pointWidth * i,
-        size.height - ((values[i] - minValue) / range * size.height),
+      for (int i = 0; i < data.length; i++) {
+        final x = (i * (barWidth + spacing)) + (spacing / 2);
+        final height = ((values[i] - minValue) / range * size.height);
+        
+        canvas.drawRect(
+          Rect.fromLTWH(
+            x,
+            size.height - height,
+            barWidth,
+            height,
+          ),
+          barPaint,
+        );
+      }
+    } else {
+      // Line chart for other metrics
+      final paint = Paint()
+        ..color = lineColor
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke;
+
+      final path = Path();
+      final pointWidth = size.width / (data.length - 1);
+      
+      path.moveTo(
+        0,
+        size.height - ((values.first - minValue) / range * size.height),
       );
-    }
 
-    canvas.drawPath(path, paint);
-
-    // Draw points
-    final pointPaint = Paint()
-      ..color = lineColor
-      ..style = PaintingStyle.fill;
-
-    for (int i = 0; i < data.length; i++) {
-      canvas.drawCircle(
-        Offset(
+      for (int i = 1; i < data.length; i++) {
+        path.lineTo(
           pointWidth * i,
           size.height - ((values[i] - minValue) / range * size.height),
-        ),
-        3,
-        pointPaint,
-      );
+        );
+      }
+
+      canvas.drawPath(path, paint);
+
+      // Draw points
+      final pointPaint = Paint()
+        ..color = lineColor
+        ..style = PaintingStyle.fill;
+
+      for (int i = 0; i < data.length; i++) {
+        canvas.drawCircle(
+          Offset(
+            pointWidth * i,
+            size.height - ((values[i] - minValue) / range * size.height),
+          ),
+          3,
+          pointPaint,
+        );
+      }
     }
   }
 

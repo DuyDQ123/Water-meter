@@ -14,7 +14,7 @@ class AuthService with ChangeNotifier {
   String? get userEmail => _email;
 
   // Match the server IP used in other files
-  static const String baseUrl = 'http://192.168.1.169/iotdigi-main';
+  static const String baseUrl = 'http://192.168.137.1/iotdigi-main';
 
   Future<String?> login(String email, String password) async {
     try {
@@ -26,10 +26,11 @@ class AuthService with ChangeNotifier {
           'password': password,
         }),
       ).timeout(
-        const Duration(seconds: 15), // Increased timeout
+        const Duration(seconds: 15),
       );
 
       if (response.statusCode != 200) {
+        debugPrint('Server error with status code: ${response.statusCode}');
         return 'Server error: ${response.statusCode}';
       }
 

@@ -119,6 +119,13 @@ class _BillScreenState extends State<BillScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Water Bill Calculator'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _calculateBill,
+            tooltip: 'Calculate Bill',
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
