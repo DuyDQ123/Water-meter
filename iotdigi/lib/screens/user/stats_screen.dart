@@ -206,9 +206,19 @@ class ChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (data.isEmpty) return;
 
-    final values = data.map((e) => double.parse(e[valueKey].toString())).toList();
+    List<double> values = [];
+    if (valueKey == 'ocr_text' && data.length > 1) {
+      // Calculate daily usage for water readings
+      for (int i = 0; i < data.length - 1; i++) {
+        final current = double.parse(data[i][valueKey].toString());
+        final next = double.parse(data[i + 1][valueKey].toString());
+        values.add(next - current);
+      }
+    } else {
+      values = data.map((e) => double.parse(e[valueKey].toString())).toList();
+    }
     final maxValue = values.reduce((a, b) => a > b ? a : b);
-    final minValue = values.reduce((a, b) => a < b ? a : b);
+    final minValue = 0.0; // Start from 0 for better visualization
     final range = maxValue - minValue;
 
     final textPainter = TextPainter(
@@ -241,16 +251,19 @@ class ChartPainter extends CustomPainter {
 
     if (valueKey == 'ocr_text') {
       // Bar chart for water usage
-      final barWidth = (size.width / data.length) * 0.8;
-      final spacing = (size.width / data.length) * 0.2;
       final barPaint = Paint()
-        ..color = lineColor
+        ..color = lineColor.withOpacity(0.7)
         ..style = PaintingStyle.fill;
+
+      final barWidth = (size.width / data.length) * 0.7; // Wider bars
+      final spacing = (size.width / data.length) * 0.3; // More spacing
 
       for (int i = 0; i < data.length; i++) {
         final x = (i * (barWidth + spacing)) + (spacing / 2);
-        final height = ((values[i] - minValue) / range * size.height);
+        final normalizedValue = values[i] - minValue;
+        final height = (normalizedValue / range) * size.height;
         
+        // Draw bar background
         canvas.drawRect(
           Rect.fromLTWH(
             x,
@@ -259,6 +272,20 @@ class ChartPainter extends CustomPainter {
             height,
           ),
           barPaint,
+        );
+
+        // Draw bar border
+        canvas.drawRect(
+          Rect.fromLTWH(
+            x,
+            size.height - height,
+            barWidth,
+            height,
+          ),
+          Paint()
+            ..color = lineColor
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1,
         );
       }
     } else {

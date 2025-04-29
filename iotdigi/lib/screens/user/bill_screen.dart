@@ -17,7 +17,7 @@ class _BillScreenState extends State<BillScreen> {
   List<Map<String, dynamic>> _billBreakdown = [];
   bool _isLoading = true;
 
-  static const String serverUrl = 'http://192.168.1.169/iotdigi-main';
+  static const String serverUrl = 'http://192.168.1.14/iotdigi-main';
 
   @override
   void initState() {
@@ -73,15 +73,15 @@ class _BillScreenState extends State<BillScreen> {
       _billBreakdown = [];
 
       final rates = [
-        {'limit': 10, 'price': 5973},
-        {'limit': 10, 'price': 7052},
-        {'limit': 10, 'price': 8669},
+        {'limit': 10.0, 'price': 5973},
+        {'limit': 10.0, 'price': 7052},
+        {'limit': 10.0, 'price': 8669},
         {'limit': double.infinity, 'price': 15929}
       ];
 
       for (final rate in rates) {
         if (remainingUsage > 0) {
-          final usage = remainingUsage.clamp(0, rate['limit'] as double);
+          final usage = remainingUsage.clamp(0.0, rate['limit'] as double);
           final tierBill = usage * (rate['price'] as int);
           _billBreakdown.add({
             'usage': usage,
@@ -122,8 +122,8 @@ class _BillScreenState extends State<BillScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _calculateBill,
-            tooltip: 'Calculate Bill',
+            onPressed: _fetchData,
+            tooltip: 'Refresh and Calculate',
           ),
         ],
       ),
