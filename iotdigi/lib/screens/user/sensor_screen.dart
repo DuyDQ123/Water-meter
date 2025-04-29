@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'bill_screen.dart';
 
 class SensorScreen extends StatefulWidget {
   const SensorScreen({super.key});
@@ -11,93 +12,89 @@ class SensorScreen extends StatefulWidget {
 }
 
 class _SensorScreenState extends State<SensorScreen> {
-  double _temperature = 0.0;
-  double _humidity = 0.0;
-  final bool _isGasDetected = false;
-  bool _isConnected = false;
+  Timer? _refreshTimer;
+  double _temperature = 0;
+  double _humidity = 0;
+  double _gasLevel = 0;
+  List<Map<String, dynamic>> _waterUsageData = [];
   bool _isLoading = true;
-  String? _errorMessage;
-  Timer? _timer;
-  List<Map<String, dynamic>> _sensorHistory = [];
+  String? _error;
+  
+  static const String serverUrl = 'http://192.168.1.169/iotdigi-main';
 
   @override
   void initState() {
     super.initState();
-    _fetchSensorData();
-    _startPeriodicFetch();
+    _fetchData();
+    _startRefreshTimer();
   }
 
-  void _startPeriodicFetch() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted) {
-        _fetchSensorData();
-      }
-    });
+  void _startRefreshTimer() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _fetchData(),
+    );
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _fetchSensorData() async {
-    if (!_isLoading) {
-      setState(() {
-        _errorMessage = null;
-      });
-    }
-
-    final client = http.Client();
+  Future<void> _fetchData() async {
     try {
-      final response = await client.get(
-        Uri.parse('http://192.168.1.159/iotdigi-main/get.php?type=dht'),
-      ).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          throw TimeoutException('Connection timed out. Please check your connection.');
-        },
-      );
-
+      final response = await http.get(Uri.parse('$serverUrl/get.php'));
+      
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['status'] == 'success' && data['latest_sensor_reading'] != null) {
+        if (data['status'] == 'success') {
           setState(() {
-            _temperature = double.parse(data['latest_sensor_reading']['temperature'].toString());
-            _humidity = double.parse(data['latest_sensor_reading']['humidity'].toString());
-            _isConnected = true;
+            if (data['latest_sensor_reading'] != null) {
+              final reading = data['latest_sensor_reading'];
+              _temperature = double.parse(reading['temperature'].toString());
+              _humidity = double.parse(reading['humidity'].toString());
+              _gasLevel = double.parse(reading['gas_level']?.toString() ?? '0');
+            }
+            _waterUsageData = List<Map<String, dynamic>>.from(data['ocr_readings'] ?? []);
             _isLoading = false;
-            _errorMessage = null;
-            _sensorHistory = List<Map<String, dynamic>>.from(data['sensor_readings']);
+            _error = null;
           });
-        } else {
-          throw Exception('Invalid data format received from server');
         }
       } else {
-        throw Exception('Server error: ${response.statusCode}');
-      }
-    } on TimeoutException catch (e) {
-      if (mounted) {
-        setState(() {
-          _isConnected = false;
-          _isLoading = false;
-          _errorMessage = e.message;
-        });
+        throw Exception('Failed to load sensor data');
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isConnected = false;
-          _isLoading = false;
-          _errorMessage = 'Error: ${e.toString()}';
-        });
-      }
-    } finally {
-      client.close();
+      if (!mounted) return;
+      setState(() {
+        _error = 'Error loading sensor data';
+        _isLoading = false;
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Color _getGasLevelColor(double level) {
+    if (level > 700) return Colors.red;
+    if (level > 500) return Colors.orange;
+    return Colors.green;
+  }
+
+  Widget _buildUsageChart() {
+    if (_waterUsageData.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      height: 150,
+      padding: const EdgeInsets.all(16),
+      child: CustomPaint(
+        painter: ChartPainter(
+          data: _waterUsageData,
+          lineColor: Colors.green,
+        ),
+      ),
+    );
   }
 
   @override
@@ -106,183 +103,261 @@ class _SensorScreenState extends State<SensorScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (_errorMessage != null) {
+    if (_error != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() => _isLoading = true);
-                  _fetchSensorData();
-                },
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchData,
+              child: const Text('Retry'),
+            ),
+          ],
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildConnectionStatus(),
-            const SizedBox(height: 24),
-            _buildSensorCard(
-              title: 'Current Readings',
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      child: GridView.count(
+        crossAxisCount: 2,
+        padding: const EdgeInsets.all(16),
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        children: [
+          // Temperature Card
+          Card(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.blue[100]!,
+                    Colors.blue[50]!,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildSensorValue(
-                    icon: Icons.thermostat,
-                    label: 'Temperature',
-                    value: '${_temperature.toStringAsFixed(1)}°C',
+                  Icon(
+                    Icons.thermostat,
+                    size: 48,
+                    color: _temperature > 40 ? Colors.red : Colors.blue,
                   ),
-                  const SizedBox(height: 16),
-                  _buildSensorValue(
-                    icon: Icons.water_drop,
-                    label: 'Humidity',
-                    value: '${_humidity.toStringAsFixed(1)}%',
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Temperature',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_temperature.toStringAsFixed(1)}°C',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: _temperature > 40 ? Colors.red : Colors.blue[700],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            _buildSensorCard(
-              title: 'Sensor History',
+          ),
+
+          // Humidity Card
+          Card(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.teal[100]!,
+                    Colors.teal[50]!,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
-                children: _sensorHistory.map((reading) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          reading['timestamp'] ?? '',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            const Icon(Icons.thermostat, size: 16, color: Colors.orange),
-                            Text(' ${reading['temperature']}°C  '),
-                            const Icon(Icons.water_drop, size: 16, color: Colors.blue),
-                            Text(' ${reading['humidity']}%'),
-                          ],
-                        ),
-                      ],
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.water_drop,
+                    size: 48,
+                    color: Colors.teal[700],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Humidity',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_humidity.toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal[700],
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConnectionStatus() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      decoration: BoxDecoration(
-        color: _isConnected ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            _isConnected ? Icons.check_circle : Icons.error,
-            color: _isConnected ? Colors.green : Colors.red,
-            size: 16,
           ),
-          const SizedBox(width: 8),
-          Text(
-            _isConnected ? 'Connected' : 'Disconnected',
-            style: TextStyle(
-              color: _isConnected ? Colors.green : Colors.red,
+
+          // Gas Level Card
+          Card(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.purple[100]!,
+                    Colors.purple[50]!,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.cloud,
+                    size: 48,
+                    color: _getGasLevelColor(_gasLevel),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Gas Level (MQ2)',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${_gasLevel.toStringAsFixed(0)} ppm',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: _getGasLevelColor(_gasLevel),
+                    ),
+                  ),
+                  if (_gasLevel > 700)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Warning!',
+                        style: TextStyle(
+                          color: Colors.red[700],
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          // Water Usage Card
+          Card(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.green[100]!,
+                    Colors.green[50]!,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    iconSize: 48,
+                    color: Colors.green[700],
+                    icon: const Icon(Icons.calculate),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const BillScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Calculate Bill',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  if (_waterUsageData.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Latest: ${_waterUsageData.last['ocr_text']} m³',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[700],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildSensorCard({required String title, required Widget child}) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            child,
-          ],
-        ),
-      ),
-    );
+class ChartPainter extends CustomPainter {
+  final List<Map<String, dynamic>> data;
+  final Color lineColor;
+
+  ChartPainter({
+    required this.data,
+    required this.lineColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (data.isEmpty) return;
+
+    final paint = Paint()
+      ..color = lineColor
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    final values = data.map((e) => double.parse(e['ocr_text'].toString())).toList();
+    final maxValue = values.reduce((a, b) => a > b ? a : b);
+    final minValue = values.reduce((a, b) => a < b ? a : b);
+    final range = maxValue - minValue;
+    final pointWidth = size.width / (data.length - 1);
+
+    path.moveTo(0, size.height - ((values.first - minValue) / range * size.height));
+
+    for (int i = 1; i < data.length; i++) {
+      path.lineTo(
+        pointWidth * i,
+        size.height - ((values[i] - minValue) / range * size.height),
+      );
+    }
+
+    canvas.drawPath(path, paint);
   }
 
-  Widget _buildSensorValue({
-    required IconData icon,
-    required String label,
-    required String value,
-    Color? valueColor,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 24),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: valueColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

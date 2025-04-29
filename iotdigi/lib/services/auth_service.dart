@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class AuthService with ChangeNotifier {
   bool _isAuthenticated = false;
@@ -12,7 +13,8 @@ class AuthService with ChangeNotifier {
   bool get isAdmin => _isAdmin;
   String? get userEmail => _email;
 
-  static const String baseUrl = 'http://192.168.1.159/iotdigi-main';
+  // Match the server IP used in other files
+  static const String baseUrl = 'http://192.168.1.169/iotdigi-main';
 
   Future<String?> login(String email, String password) async {
     try {
@@ -23,7 +25,9 @@ class AuthService with ChangeNotifier {
           'email': email,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(
+        const Duration(seconds: 15), // Increased timeout
+      );
 
       if (response.statusCode != 200) {
         return 'Server error: ${response.statusCode}';
@@ -59,11 +63,10 @@ class AuthService with ChangeNotifier {
       }
 
       return data['error'] ?? 'Login failed';
+    } on TimeoutException catch (_) {
+      return 'Connection timed out. Please check your network and try again.';
     } catch (e) {
-      if (e.toString().contains('TimeoutException')) {
-        return 'Connection timed out. Please try again.';
-      }
-      return 'Network error. Please check your connection.';
+      return 'Network error: ${e.toString()}';
     }
   }
 
@@ -76,6 +79,8 @@ class AuthService with ChangeNotifier {
           'email': email,
           'password': password,
         }),
+      ).timeout(
+        const Duration(seconds: 15), // Increased timeout
       );
 
       final data = json.decode(response.body);
@@ -96,29 +101,46 @@ class AuthService with ChangeNotifier {
       }
 
       return data['error'] ?? 'Registration failed';
+    } on TimeoutException catch (_) {
+      return 'Connection timed out. Please check your network and try again.';
     } catch (e) {
-      return 'Network error: $e';
+      return 'Network error: ${e.toString()}';
     }
   }
 
   Future<void> logout() async {
-    _isAuthenticated = false;
-    _isAdmin = false;
-    _email = null;
+    try {
+      _isAuthenticated = false;
+      _isAdmin = false;
+      _email = null;
 
-    // Clear stored user data
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+      // Clear stored user data
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
 
-    notifyListeners();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error during logout: $e');
+      // Still notify listeners even if preferences clear fails
+      notifyListeners();
+    }
   }
 
   // Initialize auth state from stored preferences
   Future<void> initializeAuthState() async {
-    final prefs = await SharedPreferences.getInstance();
-    _isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
-    _isAdmin = prefs.getBool('isAdmin') ?? false;
-    _email = prefs.getString('email');
-    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isAuthenticated = prefs.getBool('isAuthenticated') ?? false;
+      _isAdmin = prefs.getBool('isAdmin') ?? false;
+      _email = prefs.getString('email');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error initializing auth state: $e');
+      // Set to default unauthenticated state on error
+      _isAuthenticated = false;
+      _isAdmin = false;
+      _email = null;
+      notifyListeners();
+    }
   }
 }

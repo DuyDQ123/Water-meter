@@ -26,8 +26,9 @@ class MyApp extends StatelessWidget {
           primarySwatch: Colors.blue,
           fontFamily: 'Poppins',
         ),
-        home: const AuthWrapper(),
+        initialRoute: '/',
         routes: {
+          '/': (context) => const AuthWrapper(),
           '/login': (context) => const LoginScreen(),
           '/home': (context) => const HomeScreen(),
           '/admin': (context) => const AdminHomeScreen(),
@@ -55,9 +56,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _initializeAuth() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    await authService.initializeAuthState();
-    setState(() => _isInitialized = true);
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.initializeAuthState();
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+    } catch (e) {
+      debugPrint('Error initializing auth: $e');
+      // On error, show login screen
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+    }
   }
 
   @override
@@ -70,11 +81,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
       );
     }
 
-    final authService = Provider.of<AuthService>(context);
-    if (!authService.isAuthenticated) {
-      return const LoginScreen();
-    }
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        // Handle initial authentication state
+        if (!authService.isAuthenticated) {
+          return const LoginScreen();
+        }
 
-    return authService.isAdmin ? const AdminHomeScreen() : const HomeScreen();
+        // Navigate based on user role
+        return authService.isAdmin ? const AdminHomeScreen() : const HomeScreen();
+      },
+    );
   }
 }

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import 'ocr_screen.dart';
 import 'sensor_screen.dart';
-import 'led_control_screen.dart';
+import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,7 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const OcrScreen(),
     const SensorScreen(),
-    const LedControlScreen(),
+    const StatsScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -27,26 +27,61 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      await Provider.of<AuthService>(context, listen: false).logout();
+      if (!mounted) return;
+
+      // Clear all routes and navigate to login
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false, // Remove all existing routes
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      // Show error if logout fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error logging out: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  String _getTitle(int index) {
+    switch (index) {
+      case 0:
+        return 'Water Meter OCR';
+      case 1:
+        return 'Sensors';
+      case 2:
+        return 'Statistics';
+      default:
+        return 'IoT Digi';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('IoT Digi'),
+        title: Text(_getTitle(_selectedIndex)),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await Provider.of<AuthService>(context, listen: false).logout();
-              if (mounted) {
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
+            onPressed: _handleLogout,
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
+      body: WillPopScope(
+        // Prevent back navigation when authenticated
+        onWillPop: () async => false,
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _screens,
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
@@ -59,8 +94,8 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Sensors',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.lightbulb),
-            label: 'LED Control',
+            icon: Icon(Icons.analytics),
+            label: 'Stats',
           ),
         ],
         currentIndex: _selectedIndex,
