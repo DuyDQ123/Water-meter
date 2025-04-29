@@ -207,12 +207,33 @@ class ChartPainter extends CustomPainter {
     if (data.isEmpty) return;
 
     List<double> values = [];
+    List<String> dates = [];
+
     if (valueKey == 'ocr_text' && data.length > 1) {
-      // Calculate daily usage for water readings
+      // Group water readings by day
+      Map<String, double> dailyUsage = {};
+      
       for (int i = 0; i < data.length - 1; i++) {
         final current = double.parse(data[i][valueKey].toString());
         final next = double.parse(data[i + 1][valueKey].toString());
-        values.add(next - current);
+        final date = data[i]['timestamp']?.toString().substring(0, 10) ??
+                    DateTime.now().subtract(Duration(days: data.length - i - 1))
+                                .toString().substring(0, 10);
+        
+        final usage = next - current;
+        dailyUsage[date] = (dailyUsage[date] ?? 0) + usage;
+      }
+
+      // Get last 30 days data
+      final sortedDates = dailyUsage.keys.toList()..sort();
+      final last30Days = sortedDates.length > 30
+          ? sortedDates.sublist(sortedDates.length - 30)
+          : sortedDates;
+
+      for (String date in last30Days) {
+        values.add(dailyUsage[date] ?? 0);
+        // Extract day from date (DD/MM)
+        dates.add('${date.substring(8)}-${date.substring(5, 7)}');
       }
     } else {
       values = data.map((e) => double.parse(e[valueKey].toString())).toList();
@@ -237,6 +258,7 @@ class ChartPainter extends CustomPainter {
           ..strokeWidth = 0.5,
       );
 
+      // Y-axis labels
       final value = minValue + (range * i / 4);
       textPainter.text = TextSpan(
         text: '${value.toStringAsFixed(1)}$unit',
@@ -249,39 +271,64 @@ class ChartPainter extends CustomPainter {
       textPainter.paint(canvas, Offset(-textPainter.width - 4, y - textPainter.height / 2));
     }
 
-    if (valueKey == 'ocr_text') {
-      // Bar chart for water usage
-      final barPaint = Paint()
-        ..color = lineColor.withOpacity(0.7)
-        ..style = PaintingStyle.fill;
-
-      final barWidth = (size.width / data.length) * 0.7; // Wider bars
-      final spacing = (size.width / data.length) * 0.3; // More spacing
-
-      for (int i = 0; i < data.length; i++) {
-        final x = (i * (barWidth + spacing)) + (spacing / 2);
-        final normalizedValue = values[i] - minValue;
-        final height = (normalizedValue / range) * size.height;
-        
-        // Draw bar background
-        canvas.drawRect(
-          Rect.fromLTWH(
-            x,
-            size.height - height,
-            barWidth,
-            height,
+    // Draw date labels for water usage chart
+    if (valueKey == 'ocr_text' && dates.isNotEmpty) {
+      // Draw date labels every 5 days
+      for (int i = 0; i < dates.length; i += 5) {
+        textPainter.text = TextSpan(
+          text: dates[i],
+          style: TextStyle(
+            color: Colors.grey[600],
+            fontSize: 10,
           ),
-          barPaint,
         );
+        textPainter.layout();
+        
+        final x = i * (size.width / dates.length);
+        canvas.save();
+        canvas.translate(x + 10, size.height + 5);
+        canvas.rotate(-0.5); // Rotate text slightly for better readability
+        textPainter.paint(canvas, Offset.zero);
+        canvas.restore();
+      }
+    }
 
-        // Draw bar border
+    if (valueKey == 'ocr_text') {
+      // Bar chart for water usage with uniform width
+      final barWidth = (size.width / values.length) * 0.8; // 80% width for bar
+      final spacing = (size.width / values.length) * 0.2; // 20% width for spacing
+      
+      for (int i = 0; i < values.length; i++) {
+        final x = i * (barWidth + spacing);
+        final height = ((values[i] - minValue) / range) * size.height;
+        
+        // Draw bar with gradient
+        final rect = Rect.fromLTWH(
+          x,
+          size.height - height,
+          barWidth,
+          height,
+        );
+        
+        final gradient = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            lineColor.withOpacity(0.7),
+            lineColor.withOpacity(0.9),
+          ],
+        );
+        
         canvas.drawRect(
-          Rect.fromLTWH(
-            x,
-            size.height - height,
-            barWidth,
-            height,
-          ),
+          rect,
+          Paint()
+            ..shader = gradient.createShader(rect)
+            ..style = PaintingStyle.fill,
+        );
+        
+        // Draw border
+        canvas.drawRect(
+          rect,
           Paint()
             ..color = lineColor
             ..style = PaintingStyle.stroke
