@@ -52,15 +52,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     // Handle file upload (existing code)
     elseif (isset($_FILES['file'])) {
-        $upload_dir = 'video_stream/';
+        $upload_dir = __DIR__ . '/video_stream/';
         $file_path = $upload_dir . 'uploaded_image.jpg';
         
         error_log("Received file upload request. File details: " . print_r($_FILES['file'], true));
         
+        // Create video_stream directory if it doesn't exist
         if (!is_dir($upload_dir)) {
-            error_log("Creating upload directory");
-            mkdir($upload_dir, 0777, true);
+            error_log("Creating upload directory: " . $upload_dir);
+            if (!mkdir($upload_dir, 0777, true)) {
+                error_log("Failed to create directory: " . error_get_last()['message']);
+            }
         }
+
+        // Ensure directory has correct permissions
+        chmod($upload_dir, 0777);
         
         if (!is_writable($upload_dir)) {
             error_log("Upload directory is not writable");

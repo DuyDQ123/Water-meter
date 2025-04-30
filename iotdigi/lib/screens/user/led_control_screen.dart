@@ -13,7 +13,7 @@ class _LedControlScreenState extends State<LedControlScreen> {
   double _brightness = 0.0;
   final bool _isConnected = true;
   bool _isSending = false;
-  static const String esp32CamIp = '192.168.137.35';
+  static const String esp32CamIp = '192.168.137.89';
 
   Future<void> _updateBrightness(double value) async {
     if (_isSending) return;

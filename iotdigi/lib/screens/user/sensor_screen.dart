@@ -20,7 +20,7 @@ class _SensorScreenState extends State<SensorScreen> {
   bool _isLoading = true;
   String? _error;
   
-  static const String serverUrl = 'http://192.168.1.14/iotdigi-main';
+  static const String serverUrl = 'http://192.168.3.106/iotdigi-main';
 
   @override
   void initState() {

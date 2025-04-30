@@ -1,230 +1,103 @@
-# 🌱 IoT Environmental Monitoring and OCR System 📸
+# 🌟 IoT Digi - Smart IoT Platform
 
-## 📑 Table of Contents
-1. [📖 Project Overview](#project-overview)
-2. [🧩 System Architecture](#system-architecture)
-   - [📷 ESP32-CAM Module](#1-esp32-cam-module)
-   - [🌡️ ESP32 Environmental Monitor](#2-esp32-environmental-monitor)
-   - [💻 Web Application](#3-web-application)
-   - [📱 Flutter Mobile App (Demo)](#4-flutter-mobile-app-demo)
-3. [🌐 Network Architecture](#network-architecture)
-4. [🔩 Hardware Components](#hardware-components)
-5. [🛠️ Software Requirements](#software-requirements)
-6. [🚀 Installation and Setup](#installation-and-setup)
-7. [🧪 Testing Procedures](#testing-procedures)
-8. [✨ Future Enhancements](#future-enhancements)
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![ESP32](https://img.shields.io/badge/ESP32-E7352C?style=for-the-badge&logo=espressif&logoColor=white)](https://www.espressif.com)
+[![PHP](https://img.shields.io/badge/PHP-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://www.php.net)
 
-## 📖 Project Overview
-An integrated IoT system combining:
-1. 📷 ESP32-CAM for image capture and OCR
-2. 🌡️ ESP32 environmental monitor
-3. 💻 Web application for data visualization
-4. 📱 Flutter mobile application (Demo)
+## 📱 Overview
 
-## 🧩 System Architecture
+IoT Digi là một nền tảng IoT thông minh cho phép:
+- 📸 Giám sát camera ESP32
+- 💡 Điều khiển đèn LED 
+- 📊 Theo dõi cảm biến
+- 📖 Nhận dạng văn bản OCR
+- 👥 Quản lý người dùng và thiết bị
 
-### 1. 📷 ESP32-CAM Module
-- Real-time image streaming (10 FPS)
-- OCR processing with OCR.space API
-- LED brightness control (0-800)
-- FreeRTOS multi-tasking on dual cores
+## 🚀 Bắt đầu
 
-### 2. 🌡️ ESP32 Environmental Monitor
-- Temperature/humidity monitoring (DHT22)
-- OLED display interface (128x64)
-- OCR text display with auto-scroll
-- 10-second update interval
+### Yêu cầu tiên quyết
 
-### 3. 💻 Web Application
-**Technology Stack:**
-```
-Backend:  PHP + MySQL
-Frontend: HTML/CSS + JavaScript
-Server:   Apache (XAMPP)
+- [x] XAMPP
+- [x] Flutter SDK
+- [x] Arduino IDE
+- [x] ESP32 board
+- [x] ESP8266 board (tùy chọn)
+
+### 🔧 Cài đặt
+
+#### 1. Cài đặt Backend
+
+1. Cài đặt XAMPP và khởi động Apache + MySQL
+2. Copy toàn bộ project vào thư mục `htdocs`
+3. Tạo database và tables:
+```sql
+php setup_auth_db.php
 ```
 
-**Features:**
-- 📺 Live camera stream viewer
-- 📊 Environmental data graphs
-- 🔍 OCR text history & search
-- 💡 LED brightness control
-- 📤 Data export to CSV
+#### 2. Cài đặt ESP32 Camera
 
-**File Structure:**
+1. Mở thư mục `esp32cam` trong Arduino IDE
+2. Cập nhật `config.h` với thông tin WiFi của bạn:
+```cpp
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASS "your_wifi_password"
 ```
-video_upload/
-├── post.php          # Data reception
-├── get.php           # Data retrieval
-├── index.html        # Main interface
-├── css/             # Stylesheets
-├── js/              # JavaScript files
-└── video_stream/    # Image storage
-```
+3. Upload code lên ESP32-CAM
 
-### 4. 📱 Flutter Mobile App (Demo)
-**Features:**
-- 📈 Real-time data monitoring
-- 🔔 Push notifications
-- 📉 Interactive charts
-- 🕹️ Device control panel
+#### 3. Cài đặt ESP32 Sender (Tùy chọn)
 
-**Architecture:**
-- 🎨 Material Design 3
-- 🗂️ Provider state management
-- 🔗 REST API integration
-- 💾 Local SQLite cache
+1. Mở thư mục `esp32send` trong Arduino IDE 
+2. Cập nhật `config.h` tương tự như trên
+3. Upload code
 
-## 🌐 Network Architecture
+#### 4. Cài đặt Flutter App
 
-### API Endpoints
-1. **Data Upload**
-```
-POST /video_upload/post.php
-Content-Type: multipart/form-data
-Body: {
-    file: image_data,
-    temp: float,
-    humidity: float,
-    ocr_text: string
-}
-```
-
-2. **Data Retrieval**
-```
-GET /video_upload/get.php
-Response: {
-    "temp": 25.6,
-    "humidity": 65.4,
-    "ocr_text": "Sample text",
-    "timestamp": "2025-04-06 12:44:08"
-}
-```
-
-3. **Device Control**
-```
-💡 LED:    http://[ESP-IP]:81/slider?value=0-800
-🔤 OCR:    http://[ESP-IP]:82/trigger
-📸 Stream: /video_stream/uploaded_image.jpg
-```
-
-### Network Settings
-```
-📶 WiFi:
-  SSID: duy
-  Password: 11111111
-
-🌍 Servers:
-  Local: http://192.168.1.3
-  NGROK: https://df92-14-254-246-197.ngrok-free.app
-```
-
-## 🔩 Hardware Components
-
-### ESP32-CAM Requirements
-- ESP32-CAM AI Thinker board
-- OV2640 camera module
-- 💡 LED on GPIO 4
-- FTDI programmer
-
-### Environmental Monitor Setup
-```
-Component  ESP32 Pin    Description
-----------------------------------------
-DHT22      GPIO2       Temp/Humidity sensor
-OLED SDA   GPIO21      Display data
-OLED SCL   GPIO22      Display clock
-```
-
-## 🛠️ Software Requirements
-
-### Development Tools
-1. **Arduino IDE 2.0+**
-   - ESP32 board package
-   - Required libraries
-
-2. **Web Development**
-   - XAMPP v3.3.0+
-   - PHP 7.4+
-   - MySQL 5.7+
-
-3. **Mobile Development**
-   - Flutter 3.0+
-   - Dart SDK 2.17+
-   - Android Studio/VS Code
-
-### Required Libraries
-```
-Arduino:
-- ESP32 Camera Driver
-- ArduinoJson
-- WiFi & HTTPClient
-- DHT sensor library
-- Adafruit SSD1306
-- Adafruit GFX
-
-Flutter:
-- http: ^0.13.0
-- provider: ^6.0.0
-- shared_preferences: ^2.0.0
-- charts_flutter: ^0.12.0
-```
-
-## 🚀 Installation and Setup
-
-### 1. 🖥️ Server Setup
-```bash
-# 1. Install XAMPP
-# 2. Clone repository
-git clone https://github.com/DuyDQ123/Water-meter
-cd iotdigi
-
-# 3. Configure database
-mysql -u root < database/schema.sql
-
-# 4. Configure NGROK (optional)
-ngrok http 80
-```
-
-### 2. ⚙️ ESP32 Configuration
-1. Update WiFi settings in config.h
-2. Flash respective firmware
-3. Connect hardware components
-4. Verify through serial monitor
-
-### 3. 📱 Mobile App Setup
+1. Di chuyển vào thư mục Flutter:
 ```bash
 cd iotdigi
+```
+
+2. Cài đặt dependencies:
+```bash
 flutter pub get
+```
+
+3. Chạy ứng dụng:
+```bash
 flutter run
 ```
 
-## 🧪 Testing Procedures
-1. **Hardware Verification**
-   - 📸 Camera streaming
-   - 🌡️ Sensor readings
-   - 🖥️ Display function
-   - 💡 LED control
+## 📱 Sử dụng App
 
-2. **Software Testing**
-   - 🌐 API endpoints
-   - 💾 Data storage
-   - 🔄 Real-time updates
-   - 📲 Mobile features
+### 🔐 Đăng nhập/Đăng ký
+- Sử dụng màn hình đăng ký để tạo tài khoản mới
+- Đăng nhập với tài khoản đã tạo
 
-## ✨ Future Enhancements
-1. **Mobile App**
-   - 🔐 User authentication
-   - 📴 Offline capability
-   - 🔔 Custom notifications
+### 🎮 Tính năng chính
+- **Camera Stream**: Xem video trực tiếp từ ESP32-CAM
+- **LED Control**: Điều khiển đèn LED
+- **Sensor Data**: Theo dõi dữ liệu cảm biến
+- **OCR**: Nhận dạng văn bản từ hình ảnh
 
-2. **Web Interface**
-   - 📊 Advanced analytics
-   - 🖧 Multiple device support
-   - 📤 Data export options
+### 👑 Admin Panel
+- Quản lý danh sách thiết bị
+- Theo dõi thông báo
+- Quản lý người dùng
 
-3. **IoT Devices**
-   - 🔋 Power management
-   - 📡 OTA updates
+## 🤝 Đóng góp
+
+Mọi đóng góp đều được chào đón! Vui lòng:
+1. Fork project
+2. Tạo branch mới (`git checkout -b feature/AmazingFeature`)
+3. Commit thay đổi (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Mở Pull Request
+
+## 📝 License
+
+MIT License - xem [LICENSE](LICENSE) để biết thêm chi tiết
+
+##  Cảm ơn
    - 🌱 Additional sensors
 
 ## 📚 Documentation

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
-import 'bill_screen.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -13,21 +14,12 @@ class StatsScreen extends StatefulWidget {
 
 class _StatsScreenState extends State<StatsScreen> {
   Timer? _refreshTimer;
-  List<Map<String, dynamic>> _temperatureData = [];
-  List<Map<String, dynamic>> _humidityData = [];
-  List<Map<String, dynamic>> _gasData = [];
   List<Map<String, dynamic>> _waterUsageData = [];
-  double? _totalBill;
+  List<MapEntry<String, double>>? _chartData;
+  List<BarChartGroupData>? _cachedBarGroups;
   bool _isLoading = true;
   String? _error;
-
-  static const String serverUrl = 'http://192.168.1.14/iotdigi-main';
-  static const List<Map<String, dynamic>> waterRates = [
-    {'limit': 10, 'price': 5973, 'description': '0-10m³: 5.973 VNĐ/m³'},
-    {'limit': 10, 'price': 7052, 'description': '10-20m³: 7.052 VNĐ/m³'},
-    {'limit': 10, 'price': 8669, 'description': '20-30m³: 8.669 VNĐ/m³'},
-    {'limit': double.infinity, 'price': 15929, 'description': '>30m³: 15.929 VNĐ/m³'}
-  ];
+  static const String serverUrl = 'http://192.168.3.106/iotdigi-main';
 
   @override
   void initState() {
@@ -38,7 +30,8 @@ class _StatsScreenState extends State<StatsScreen> {
 
   void _startRefreshTimer() {
     _refreshTimer?.cancel();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _fetchData());
+    // Refresh more frequently to catch OCR updates
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => _fetchData());
   }
 
   Future<void> _fetchData() async {
@@ -50,14 +43,15 @@ class _StatsScreenState extends State<StatsScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
-          setState(() {
-            _temperatureData = List<Map<String, dynamic>>.from(data['temperature_history'] ?? []);
-            _humidityData = List<Map<String, dynamic>>.from(data['humidity_history'] ?? []);
-            _gasData = List<Map<String, dynamic>>.from(data['gas_history'] ?? []);
-            _waterUsageData = List<Map<String, dynamic>>.from(data['ocr_readings'] ?? []);
-            _isLoading = false;
-            _calculateBill();
-          });
+          final newData = List<Map<String, dynamic>>.from(data['ocr_readings'] ?? []);
+          if (!listEquals(_waterUsageData, newData)) {
+            setState(() {
+              _waterUsageData = newData;
+              _chartData = null;
+              _cachedBarGroups = null;
+              _isLoading = false;
+            });
+          }
         }
       } else {
         throw Exception('Failed to load data');
@@ -71,77 +65,72 @@ class _StatsScreenState extends State<StatsScreen> {
     }
   }
 
-  void _calculateBill() {
-    if (_waterUsageData.length < 2) return;
-
-    try {
-      final startReading = double.parse(_waterUsageData.first['ocr_text'].toString());
-      final endReading = double.parse(_waterUsageData.last['ocr_text'].toString());
-      final totalUsage = endReading - startReading;
-      
-      double bill = 0;
-      var remainingUsage = totalUsage;
-
-      for (final rate in waterRates) {
-        if (remainingUsage > 0) {
-          final usage = remainingUsage.clamp(0, rate['limit'] as double);
-          bill += usage * (rate['price'] as int);
-          remainingUsage -= usage;
-        } else {
-          break;
+  List<MapEntry<String, double>> _processData() {
+    if (_chartData != null) return _chartData!;
+    
+    debugPrint('Processing ${_waterUsageData.length} records');
+    
+    // Get the last 10 days
+    final now = DateTime.now();
+    final dates = List.generate(10, (index) {
+      return now.subtract(Duration(days: 9 - index));
+    });
+    
+    // Initialize with 0 for all days
+    Map<String, double> dailyUsage = {
+      for (var date in dates)
+        date.toString().substring(0, 10): 0.0
+    };
+    
+    // Calculate usage for each day
+    for (int i = 0; i < _waterUsageData.length - 1; i++) {
+      try {
+        final current = double.parse(_waterUsageData[i]['ocr_text'].toString());
+        final next = double.parse(_waterUsageData[i + 1]['ocr_text'].toString());
+        final timestamp = _waterUsageData[i]['timestamp'];
+        if (timestamp == null) continue;
+        
+        final date = timestamp.toString().substring(0, 10);
+        if (!dailyUsage.containsKey(date)) continue;
+        
+        final usage = next - current;
+        if (usage > 0) {
+          dailyUsage[date] = (dailyUsage[date] ?? 0) + usage;
         }
+      } catch (e) {
+        debugPrint('Error processing record $i: $e');
       }
-
-      setState(() => _totalBill = bill);
-    } catch (e) {
-      debugPrint('Error calculating bill: $e');
     }
+    
+    // Convert to sorted list
+    _chartData = dates.map((date) {
+      final dateStr = date.toString().substring(0, 10);
+      return MapEntry(dateStr, (dailyUsage[dateStr] ?? 0).roundToDouble());
+    }).toList();
+    
+    debugPrint('Chart data: $_chartData');
+    return _chartData!;
   }
 
-  Widget _buildChart(String title, List<Map<String, dynamic>> data, String valueKey, Color color, String unit) {
-    if (data.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      height: 200,
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 5,
+  List<BarChartGroupData> _getBarGroups() {
+    if (_cachedBarGroups != null) return _cachedBarGroups!;
+    
+    final data = _processData();
+    _cachedBarGroups = List.generate(data.length, (index) {
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: data[index].value,
+            color: Colors.blue.shade400,
+            width: 15,
+            borderRadius: BorderRadius.zero,
           ),
         ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: CustomPaint(
-              painter: ChartPainter(
-                data: data,
-                valueKey: valueKey,
-                lineColor: color,
-                unit: unit,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+      );
+    });
+    
+    return _cachedBarGroups!;
   }
 
   @override
@@ -172,211 +161,95 @@ class _StatsScreenState extends State<StatsScreen> {
       );
     }
 
+    final chartData = _processData();
+
     return RefreshIndicator(
       onRefresh: _fetchData,
-      child: ListView(
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        children: [
-          // Charts
-          _buildChart('Temperature History', _temperatureData, 'temperature', Colors.red, '°C'),
-          _buildChart('Humidity History', _humidityData, 'humidity', Colors.blue, '%'),
-          _buildChart('Gas Level History', _gasData, 'gas_level', Colors.purple, 'ppm'),
-          _buildChart('Water Usage History', _waterUsageData, 'ocr_text', Colors.green, 'm³'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Daily Water Usage (Last 10 Days)',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: _waterUsageData.isEmpty
+                  ? const Center(child: Text('No data available'))
+                  : Stack(
+                      children: [
+                        BarChart(
+                          BarChartData(
+                            alignment: BarChartAlignment.spaceAround,
+                            barGroups: _getBarGroups(),
+                            gridData: FlGridData(show: false),
+                            titlesData: FlTitlesData(
+                              show: true,
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (value, meta) {
+                                    final index = value.toInt();
+                                    if (index >= 0 && index < chartData.length) {
+                                      final date = chartData[index].key;
+                                      return Text(
+                                        date.substring(5, 10).replaceAll('-', '/'),
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    }
+                                    return const Text('');
+                                  },
+                                  reservedSize: 30,
+                                ),
+                              ),
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              topTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                              rightTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: false),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            barTouchData: BarTouchData(enabled: false),
+                          ),
+                        ),
+                        ...List.generate(chartData.length, (index) {
+                          final value = chartData[index].value;
+                          final barWidth = 15.0;
+                          final totalWidth = MediaQuery.of(context).size.width - 32; // Padding
+                          final width = (totalWidth - barWidth * chartData.length) / (chartData.length + 1);
+                          final x = width + index * (barWidth + width) + barWidth / 2;
 
-        ],
+                          return Positioned(
+                            left: x - 15,
+                            top: 0,
+                            child: Text(
+                              '${value.round()} m³',
+                              style: const TextStyle(
+                                color: Colors.black87,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
-}
-
-class ChartPainter extends CustomPainter {
-  final List<Map<String, dynamic>> data;
-  final String valueKey;
-  final Color lineColor;
-  final String unit;
-
-  ChartPainter({
-    required this.data,
-    required this.valueKey,
-    required this.lineColor,
-    required this.unit,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (data.isEmpty) return;
-
-    List<double> values = [];
-    List<String> dates = [];
-
-    if (valueKey == 'ocr_text' && data.length > 1) {
-      // Group water readings by day
-      Map<String, double> dailyUsage = {};
-      
-      for (int i = 0; i < data.length - 1; i++) {
-        final current = double.parse(data[i][valueKey].toString());
-        final next = double.parse(data[i + 1][valueKey].toString());
-        final date = data[i]['timestamp']?.toString().substring(0, 10) ??
-                    DateTime.now().subtract(Duration(days: data.length - i - 1))
-                                .toString().substring(0, 10);
-        
-        final usage = next - current;
-        dailyUsage[date] = (dailyUsage[date] ?? 0) + usage;
-      }
-
-      // Get last 30 days data
-      final sortedDates = dailyUsage.keys.toList()..sort();
-      final last30Days = sortedDates.length > 30
-          ? sortedDates.sublist(sortedDates.length - 30)
-          : sortedDates;
-
-      for (String date in last30Days) {
-        values.add(dailyUsage[date] ?? 0);
-        // Extract day from date (DD/MM)
-        dates.add('${date.substring(8)}-${date.substring(5, 7)}');
-      }
-    } else {
-      values = data.map((e) => double.parse(e[valueKey].toString())).toList();
-    }
-    final maxValue = values.reduce((a, b) => a > b ? a : b);
-    final minValue = 0.0; // Start from 0 for better visualization
-    final range = maxValue - minValue;
-
-    final textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.right,
-    );
-
-    // Draw grid lines and labels
-    for (int i = 0; i <= 4; i++) {
-      final y = size.height - (size.height * i / 4);
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        Paint()
-          ..color = Colors.grey[300]!
-          ..strokeWidth = 0.5,
-      );
-
-      // Y-axis labels
-      final value = minValue + (range * i / 4);
-      textPainter.text = TextSpan(
-        text: '${value.toStringAsFixed(1)}$unit',
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 10,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(canvas, Offset(-textPainter.width - 4, y - textPainter.height / 2));
-    }
-
-    // Draw date labels for water usage chart
-    if (valueKey == 'ocr_text' && dates.isNotEmpty) {
-      // Draw date labels every 5 days
-      for (int i = 0; i < dates.length; i += 5) {
-        textPainter.text = TextSpan(
-          text: dates[i],
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 10,
-          ),
-        );
-        textPainter.layout();
-        
-        final x = i * (size.width / dates.length);
-        canvas.save();
-        canvas.translate(x + 10, size.height + 5);
-        canvas.rotate(-0.5); // Rotate text slightly for better readability
-        textPainter.paint(canvas, Offset.zero);
-        canvas.restore();
-      }
-    }
-
-    if (valueKey == 'ocr_text') {
-      // Bar chart for water usage with uniform width
-      final barWidth = (size.width / values.length) * 0.8; // 80% width for bar
-      final spacing = (size.width / values.length) * 0.2; // 20% width for spacing
-      
-      for (int i = 0; i < values.length; i++) {
-        final x = i * (barWidth + spacing);
-        final height = ((values[i] - minValue) / range) * size.height;
-        
-        // Draw bar with gradient
-        final rect = Rect.fromLTWH(
-          x,
-          size.height - height,
-          barWidth,
-          height,
-        );
-        
-        final gradient = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            lineColor.withOpacity(0.7),
-            lineColor.withOpacity(0.9),
-          ],
-        );
-        
-        canvas.drawRect(
-          rect,
-          Paint()
-            ..shader = gradient.createShader(rect)
-            ..style = PaintingStyle.fill,
-        );
-        
-        // Draw border
-        canvas.drawRect(
-          rect,
-          Paint()
-            ..color = lineColor
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1,
-        );
-      }
-    } else {
-      // Line chart for other metrics
-      final paint = Paint()
-        ..color = lineColor
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke;
-
-      final path = Path();
-      final pointWidth = size.width / (data.length - 1);
-      
-      path.moveTo(
-        0,
-        size.height - ((values.first - minValue) / range * size.height),
-      );
-
-      for (int i = 1; i < data.length; i++) {
-        path.lineTo(
-          pointWidth * i,
-          size.height - ((values[i] - minValue) / range * size.height),
-        );
-      }
-
-      canvas.drawPath(path, paint);
-
-      // Draw points
-      final pointPaint = Paint()
-        ..color = lineColor
-        ..style = PaintingStyle.fill;
-
-      for (int i = 0; i < data.length; i++) {
-        canvas.drawCircle(
-          Offset(
-            pointWidth * i,
-            size.height - ((values[i] - minValue) / range * size.height),
-          ),
-          3,
-          pointPaint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
