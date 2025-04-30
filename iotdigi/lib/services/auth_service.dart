@@ -13,11 +13,13 @@ class AuthService with ChangeNotifier {
   bool get isAdmin => _isAdmin;
   String? get userEmail => _email;
 
-  // Match the server IP used in other files
-  static const String baseUrl = 'http://192.168.137.1/iotdigi-main';
+  // Update server IP to match your network configuration
+  static const String baseUrl = 'http://192.168.1.159/iotdigi-main';
 
   Future<String?> login(String email, String password) async {
     try {
+      debugPrint('Attempting login to: $baseUrl/auth_login.php');
+      
       final response = await http.post(
         Uri.parse('$baseUrl/auth_login.php'),
         headers: {'Content-Type': 'application/json'},
@@ -26,8 +28,11 @@ class AuthService with ChangeNotifier {
           'password': password,
         }),
       ).timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 10),
       );
+
+      debugPrint('Response status code: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       if (response.statusCode != 200) {
         debugPrint('Server error with status code: ${response.statusCode}');
@@ -38,6 +43,7 @@ class AuthService with ChangeNotifier {
       try {
         data = json.decode(response.body);
       } catch (e) {
+        debugPrint('JSON decode error: $e');
         return 'Invalid server response';
       }
 
@@ -59,20 +65,25 @@ class AuthService with ChangeNotifier {
           notifyListeners();
           return null;
         } catch (e) {
+          debugPrint('Error saving user data: $e');
           return 'Error saving user data: $e';
         }
       }
 
       return data['error'] ?? 'Login failed';
     } on TimeoutException catch (_) {
+      debugPrint('Connection timed out');
       return 'Connection timed out. Please check your network and try again.';
     } catch (e) {
+      debugPrint('Network error: $e');
       return 'Network error: ${e.toString()}';
     }
   }
 
   Future<String?> register(String email, String password) async {
     try {
+      debugPrint('Attempting registration to: $baseUrl/auth_register.php');
+      
       final response = await http.post(
         Uri.parse('$baseUrl/auth_register.php'),
         headers: {'Content-Type': 'application/json'},
@@ -81,8 +92,11 @@ class AuthService with ChangeNotifier {
           'password': password,
         }),
       ).timeout(
-        const Duration(seconds: 15), // Increased timeout
+        const Duration(seconds: 10),
       );
+
+      debugPrint('Response status code: ${response.statusCode}');
+      debugPrint('Response body: ${response.body}');
 
       final data = json.decode(response.body);
 
@@ -103,8 +117,10 @@ class AuthService with ChangeNotifier {
 
       return data['error'] ?? 'Registration failed';
     } on TimeoutException catch (_) {
+      debugPrint('Connection timed out');
       return 'Connection timed out. Please check your network and try again.';
     } catch (e) {
+      debugPrint('Network error: $e');
       return 'Network error: ${e.toString()}';
     }
   }

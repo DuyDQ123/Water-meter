@@ -1,25 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'dart:async';
 
 class Device {
   final String id;
   String name;
-  bool isOnline;
-  double temperature;
-  double humidity;
-  bool gasDetected;
-  double ledBrightness;
+  double? locationLat;
+  double? locationLng;
+  double? lastBillAmount;
+  String? billDate;
+  String? lastReading;
+  String? lastUpdate;
 
   Device({
     required this.id,
     required this.name,
-    this.isOnline = false,
-    this.temperature = 0.0,
-    this.humidity = 0.0,
-    this.gasDetected = false,
-    this.ledBrightness = 0.0,
+    this.locationLat,
+    this.locationLng,
+    this.lastBillAmount,
+    this.billDate,
+    this.lastReading,
+    this.lastUpdate,
   });
 }
 
@@ -31,134 +35,218 @@ class DeviceListScreen extends StatefulWidget {
 }
 
 class _DeviceListScreenState extends State<DeviceListScreen> {
-  final client = MqttServerClient('your_mqtt_broker', '');
+  static const String serverUrl = 'http://192.168.1.159/iotdigi-main';
   final List<Device> _devices = [];
-  bool _isConnected = false;
+  bool _isLoading = false;
+  String? _error;
+  GoogleMapController? _mapController;
+  bool _showMap = false;
+  Timer? _refreshTimer;
+  final _currencyFormat = NumberFormat.currency(
+    locale: 'vi_VN',
+    symbol: '₫',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
     super.initState();
-    _connectMQTT();
-    // Add some sample devices
-    _devices.addAll([
-      Device(id: 'device1', name: 'ESP32-CAM 1'),
-      Device(id: 'device2', name: 'ESP32-CAM 2'),
-    ]);
+    _fetchDevices();
+    // Auto refresh every 5 minutes
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+      _fetchDevices();
+    });
+  }
+
+  Future<void> _fetchDevices() async {
+    if (_isLoading) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('$serverUrl/get_devices.php'),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Không thể kết nối đến server');
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['devices'] != null) {
+          setState(() {
+            _devices.clear();
+            for (var deviceData in data['devices']) {
+              _devices.add(Device(
+                id: deviceData['id'].toString(),
+                name: deviceData['name'],
+                locationLat: deviceData['location_lat']?.toDouble(),
+                locationLng: deviceData['location_lng']?.toDouble(),
+                lastBillAmount: deviceData['last_bill_amount']?.toDouble(),
+                billDate: deviceData['bill_date'],
+                lastReading: deviceData['last_reading'],
+                lastUpdate: deviceData['last_update'],
+              ));
+            }
+            _isLoading = false;
+          });
+        } else {
+          throw Exception('Invalid response format');
+        }
+      } else {
+        throw Exception('HTTP Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   void dispose() {
-    client.disconnect();
+    _mapController?.dispose();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _connectMQTT() async {
-    client.logging(on: true);
-    client.port = 1883;
-    client.keepAlivePeriod = 60;
-    client.onConnected = _onConnected;
-    client.onDisconnected = _onDisconnected;
-
-    final connMessage = MqttConnectMessage()
-        .withClientIdentifier('flutter_admin_client')
-        .startClean()
-        .withWillQos(MqttQos.atLeastOnce);
-
-    client.connectionMessage = connMessage;
-
-    try {
-      await client.connect();
-    } catch (e) {
-      debugPrint('MQTT connection failed: $e');
-      client.disconnect();
-    }
-  }
-
-  void _onConnected() {
-    setState(() => _isConnected = true);
-    
-    // Subscribe to all device topics
-    client.subscribe('devices/+/status', MqttQos.atLeastOnce);
-    client.subscribe('sensors/+/dht22', MqttQos.atLeastOnce);
-    client.subscribe('sensors/+/mq2', MqttQos.atLeastOnce);
-    client.subscribe('esp32cam/+/led/status', MqttQos.atLeastOnce);
-
-    client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
-      for (var message in messages) {
-        final payload = (message.payload as MqttPublishMessage).payload.message;
-        final topic = message.topic;
-        final data = json.decode(utf8.decode(payload));
-        
-        // Extract device ID from topic
-        final deviceId = topic.split('/')[1];
-        final device = _devices.firstWhere(
-          (d) => d.id == deviceId,
-          orElse: () => Device(id: deviceId, name: 'Device $deviceId'),
-        );
-
-        if (mounted) {
-          setState(() {
-            if (topic.endsWith('/status')) {
-              device.isOnline = data['online'] ?? false;
-            } else if (topic.contains('/dht22')) {
-              device.temperature = data['temperature']?.toDouble() ?? 0.0;
-              device.humidity = data['humidity']?.toDouble() ?? 0.0;
-            } else if (topic.contains('/mq2')) {
-              device.gasDetected = data['gas_detected'] ?? false;
-            } else if (topic.contains('/led/status')) {
-              device.ledBrightness = data['brightness']?.toDouble() ?? 0.0;
-            }
-          });
-        }
-      }
-    });
-  }
-
-  void _onDisconnected() {
-    setState(() => _isConnected = false);
+  Set<Marker> _createMarkers() {
+    return _devices.where((device) => 
+      device.locationLat != null && device.locationLng != null
+    ).map((device) {
+      return Marker(
+        markerId: MarkerId(device.id),
+        position: LatLng(device.locationLat!, device.locationLng!),
+        infoWindow: InfoWindow(
+          title: device.name,
+          snippet: device.lastBillAmount != null 
+              ? 'Hoá đơn gần nhất: ${_currencyFormat.format(device.lastBillAmount)}'
+              : 'Chưa có hoá đơn',
+        ),
+      );
+    }).toSet();
   }
 
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
-      onRefresh: _connectMQTT,
+      onRefresh: _fetchDevices,
       child: Column(
         children: [
-          _buildConnectionStatus(),
-          Expanded(
-            child: ListView.builder(
+          _buildStatusBar(),
+          if (_error != null)
+            Container(
               padding: const EdgeInsets.all(8),
-              itemCount: _devices.length,
-              itemBuilder: (context, index) {
-                final device = _devices[index];
-                return _buildDeviceCard(device);
-              },
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Text(
+                _error!,
+                style: TextStyle(color: Colors.red.shade700),
+              ),
             ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                const Text('Chế độ xem:'),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Danh sách'),
+                  selected: !_showMap,
+                  onSelected: (selected) {
+                    setState(() => _showMap = !selected);
+                  },
+                ),
+                const SizedBox(width: 8),
+                ChoiceChip(
+                  label: const Text('Bản đồ'),
+                  selected: _showMap,
+                  onSelected: (selected) {
+                    setState(() => _showMap = selected);
+                  },
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _showMap ? _buildMap() : _buildDeviceList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildConnectionStatus() {
+  Widget _buildMap() {
+    return GoogleMap(
+      initialCameraPosition: const CameraPosition(
+        target: LatLng(21.028511, 105.804817), // Hà Nội
+        zoom: 12,
+      ),
+      markers: _createMarkers(),
+      onMapCreated: (GoogleMapController controller) {
+        _mapController = controller;
+      },
+    );
+  }
+
+  Widget _buildDeviceList() {
+    if (_isLoading && _devices.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_devices.isEmpty) {
+      return const Center(
+        child: Text('Chưa có thiết bị nào'),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: _devices.length,
+      itemBuilder: (context, index) {
+        final device = _devices[index];
+        return _buildDeviceCard(device);
+      },
+    );
+  }
+
+  Widget _buildStatusBar() {
     return Container(
       padding: const EdgeInsets.all(8),
-      color: _isConnected ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+      color: Colors.blue.withOpacity(0.1),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _isConnected ? Icons.check_circle : Icons.error,
-            color: _isConnected ? Colors.green : Colors.red,
+            _isLoading ? Icons.sync : Icons.info,
             size: 16,
+            color: Colors.blue,
           ),
           const SizedBox(width: 8),
           Text(
-            _isConnected ? 'Connected to MQTT Broker' : 'Disconnected',
-            style: TextStyle(
-              color: _isConnected ? Colors.green : Colors.red,
-            ),
+            _isLoading
+                ? 'Đang cập nhật...'
+                : 'Cập nhật tự động mỗi 5 phút',
+            style: const TextStyle(color: Colors.blue),
           ),
+          if (!_isLoading)
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 16),
+              onPressed: _fetchDevices,
+              tooltip: 'Cập nhật ngay',
+            ),
         ],
       ),
     );
@@ -168,41 +256,43 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       child: ExpansionTile(
-        leading: Icon(
-          Icons.device_hub,
-          color: device.isOnline ? Colors.green : Colors.grey,
-        ),
+        leading: const Icon(Icons.device_hub),
         title: Text(device.name),
-        subtitle: Text(device.isOnline ? 'Online' : 'Offline'),
+        subtitle: Text(
+            device.lastUpdate != null 
+            ? 'Cập nhật: ${_formatDateTime(device.lastUpdate!)}'
+            : 'Chưa có dữ liệu'
+        ),
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSensorRow(
-                  'Temperature',
-                  '${device.temperature.toStringAsFixed(1)}°C',
-                  Icons.thermostat,
-                ),
-                const SizedBox(height: 8),
-                _buildSensorRow(
-                  'Humidity',
-                  '${device.humidity.toStringAsFixed(1)}%',
-                  Icons.water_drop,
-                ),
-                const SizedBox(height: 8),
-                _buildSensorRow(
-                  'Gas Status',
-                  device.gasDetected ? 'Detected!' : 'Normal',
-                  Icons.warning,
-                  valueColor: device.gasDetected ? Colors.red : Colors.green,
-                ),
-                const SizedBox(height: 8),
-                _buildSensorRow(
-                  'LED Brightness',
-                  '${device.ledBrightness.round()}%',
-                  Icons.lightbulb,
-                ),
+                if (device.locationLat != null && device.locationLng != null)
+                  _buildInfoRow(
+                    'Vị trí',
+                    '${device.locationLat!.toStringAsFixed(6)}, ${device.locationLng!.toStringAsFixed(6)}',
+                    Icons.location_on,
+                  ),
+                if (device.lastReading != null)
+                  _buildInfoRow(
+                    'Chỉ số gần nhất',
+                    device.lastReading!,
+                    Icons.water_drop,
+                  ),
+                if (device.lastBillAmount != null)
+                  _buildInfoRow(
+                    'Hoá đơn gần nhất',
+                    _currencyFormat.format(device.lastBillAmount),
+                    Icons.receipt,
+                  ),
+                if (device.billDate != null)
+                  _buildInfoRow(
+                    'Ngày',
+                    _formatDateTime(device.billDate!),
+                    Icons.calendar_today,
+                  ),
               ],
             ),
           ),
@@ -211,21 +301,28 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
     );
   }
 
-  Widget _buildSensorRow(String label, String value, IconData icon, {Color? valueColor}) {
-    return Row(
-      children: [
-        Icon(icon, size: 20),
-        const SizedBox(width: 8),
-        Text(label),
-        const Spacer(),
-        Text(
-          value,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: valueColor,
+  Widget _buildInfoRow(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 20),
+          const SizedBox(width: 8),
+          Text(label),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
+  }
+
+  String _formatDateTime(String dateTimeStr) {
+    final dt = DateTime.parse(dateTimeStr);
+    return '${dt.day}/${dt.month}/${dt.year} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
   }
 }

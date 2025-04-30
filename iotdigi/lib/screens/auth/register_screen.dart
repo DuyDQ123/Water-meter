@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
-import '../user/home_screen.dart';
+import 'dart:io';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -26,6 +26,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  Future<bool> _checkConnectivity() async {
+    try {
+      final result = await InternetAddress.lookup('192.168.1.159');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -34,32 +43,56 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _errorMessage = null;
     });
 
-    if (_passwordController.text != _confirmPasswordController.text) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Passwords do not match';
-      });
-      return;
-    }
-
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final error = await authService.register(
-      _emailController.text.trim(),
-      _passwordController.text.trim(),
-    );
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = error;
-      });
-
-      if (error == null) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
-          (route) => false,
-        );
+    try {
+      // Check network connectivity first
+      final hasConnection = await _checkConnectivity();
+      if (!hasConnection) {
+        setState(() {
+          _errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra:\n'
+              '1. Điện thoại đã kết nối WiFi\n'
+              '2. Điện thoại và server trong cùng mạng LAN\n'
+              '3. Server (XAMPP) đang chạy';
+          _isLoading = false;
+        });
+        return;
       }
+
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final error = await authService.register(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (error != null) {
+        setState(() {
+          _errorMessage = 'Lỗi: $error\n\n'
+              'Kiểm tra:\n'
+              '1. Email chưa được sử dụng\n'
+              '2. Server address: ${AuthService.baseUrl}\n'
+              '3. XAMPP (Apache + MySQL) đang chạy';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Clear form on successful registration
+      _passwordController.clear();
+      _confirmPasswordController.clear();
+
+      if (authService.isAdmin) {
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Lỗi không xác định: $e';
+        _isLoading = false;
+      });
     }
   }
 
@@ -67,7 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        title: const Text('Đăng ký'),
       ),
       body: SafeArea(
         child: Center(
@@ -80,7 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Create Account',
+                    'Tạo tài khoản mới',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -93,14 +126,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return 'Vui lòng nhập email';
                       }
                       if (!value.contains('@')) {
-                        return 'Please enter a valid email';
+                        return 'Email không hợp lệ';
                       }
                       return null;
                     },
@@ -109,16 +143,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _passwordController,
                     decoration: const InputDecoration(
-                      labelText: 'Password',
+                      labelText: 'Mật khẩu',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock),
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
+                        return 'Vui lòng nhập mật khẩu';
                       }
                       if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
+                        return 'Mật khẩu phải có ít nhất 6 ký tự';
                       }
                       return null;
                     },
@@ -127,29 +162,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   TextFormField(
                     controller: _confirmPasswordController,
                     decoration: const InputDecoration(
-                      labelText: 'Confirm Password',
+                      labelText: 'Xác nhận mật khẩu',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock_outline),
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please confirm your password';
+                        return 'Vui lòng xác nhận mật khẩu';
+                      }
+                      if (value != _passwordController.text) {
+                        return 'Mật khẩu không khớp';
                       }
                       return null;
                     },
                   ),
                   if (_errorMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red.shade700),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),
-                  ElevatedButton(
+                  ElevatedButton.icon(
                     onPressed: _isLoading ? null : _register,
-                    child: _isLoading
+                    icon: _isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
@@ -157,7 +203,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text('Register'),
+                        : const Icon(Icons.person_add),
+                    label: Text(_isLoading ? 'Đang đăng ký...' : 'Đăng ký'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Quay lại đăng nhập'),
                   ),
                 ],
               ),

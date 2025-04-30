@@ -22,7 +22,7 @@ class _OcrScreenState extends State {
   // Server configuration from ESP32 config
   static const String serverIP = '192.168.1.159';
   static const String localServerUrl = 'http://192.168.1.159/iotdigi-main';
-  static const String controllerIP = '192.168.137.75';
+  static const String controllerIP = '192.168.137.210';
   static const int ocrPort = 82;
   static const Duration _streamInterval = Duration(milliseconds: 100);
 

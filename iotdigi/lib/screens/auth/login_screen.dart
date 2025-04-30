@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import 'dart:io';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +24,15 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<bool> _checkConnectivity() async {
+    try {
+      final result = await InternetAddress.lookup('192.168.1.159');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
+    }
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -32,6 +42,19 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // Check network connectivity first
+      final hasConnection = await _checkConnectivity();
+      if (!hasConnection) {
+        setState(() {
+          _errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra:\n'
+              '1. Điện thoại đã kết nối WiFi\n'
+              '2. Điện thoại và server trong cùng mạng LAN\n'
+              '3. Server (XAMPP) đang chạy';
+          _isLoading = false;
+        });
+        return;
+      }
+
       final authService = Provider.of<AuthService>(context, listen: false);
       final error = await authService.login(
         _emailController.text.trim(),
@@ -42,7 +65,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (error != null) {
         setState(() {
-          _errorMessage = error;
+          _errorMessage = 'Lỗi: $error\n\n'
+              'Kiểm tra:\n'
+              '1. Email và mật khẩu đúng\n'
+              '2. Server address: ${AuthService.baseUrl}\n'
+              '3. XAMPP (Apache + MySQL) đang chạy';
           _isLoading = false;
         });
         return;
@@ -60,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Unexpected error occurred';
+        _errorMessage = 'Lỗi không xác định: $e';
         _isLoading = false;
       });
     }
@@ -93,11 +120,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your email';
+                        return 'Vui lòng nhập email';
                       }
                       return null;
                     },
@@ -108,27 +136,35 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.lock),
                     ),
                     obscureText: true,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
+                        return 'Vui lòng nhập mật khẩu';
                       }
                       return null;
                     },
                   ),
                   if (_errorMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red.shade700),
+                      ),
                     ),
                   ],
                   const SizedBox(height: 24),
-                  ElevatedButton(
+                  ElevatedButton.icon(
                     onPressed: _isLoading ? null : _login,
-                    child: _isLoading
+                    icon: _isLoading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
@@ -136,14 +172,16 @@ class _LoginScreenState extends State<LoginScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text('Login'),
+                        : const Icon(Icons.login),
+                    label: Text(_isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'),
                   ),
                   const SizedBox(height: 16),
-                  TextButton(
+                  TextButton.icon(
                     onPressed: () {
                       Navigator.pushNamed(context, '/register');
                     },
-                    child: const Text('Don\'t have an account? Register'),
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Chưa có tài khoản? Đăng ký'),
                   ),
                 ],
               ),

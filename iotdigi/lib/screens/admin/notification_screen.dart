@@ -1,23 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:http/http.dart' as http;
 import 'dart:convert';
-
-class Alert {
-  final String deviceId;
-  final String type;
-  final String message;
-  final DateTime timestamp;
-  bool isRead;
-
-  Alert({
-    required this.deviceId,
-    required this.type,
-    required this.message,
-    required this.timestamp,
-    this.isRead = false,
-  });
-}
+import 'dart:async';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -27,207 +11,157 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  final client = MqttServerClient('your_mqtt_broker', '');
-  final List<Alert> _alerts = [];
-  bool _isConnected = false;
-  // Temporarily removed notifications
-  // final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  List<Map<String, dynamic>> _notifications = [];
+  bool _isLoading = false;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
-    // _initNotifications();
-    _connectMQTT();
+    _fetchNotifications();
+    // Auto refresh every minute
+    _refreshTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (timer) => _fetchNotifications(),
+    );
   }
 
   @override
   void dispose() {
-    client.disconnect();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
-  // Temporarily removed notifications
-  // Future<void> _initNotifications() async {
-  //   // Implementation removed
-  // }
+  Future<void> _fetchNotifications() async {
+    if (_isLoading) return;
 
-  // Future<void> _showNotification(Alert alert) async {
-  //   // Implementation removed
-  // }
-
-  Future<void> _connectMQTT() async {
-    client.logging(on: true);
-    client.port = 1883;
-    client.keepAlivePeriod = 60;
-    client.onConnected = _onConnected;
-    client.onDisconnected = _onDisconnected;
-
-    final connMessage = MqttConnectMessage()
-        .withClientIdentifier('flutter_admin_notifications')
-        .startClean()
-        .withWillQos(MqttQos.atLeastOnce);
-
-    client.connectionMessage = connMessage;
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      await client.connect();
+      final response = await http.get(
+        Uri.parse('http://192.168.1.159/iotdigi-main/get_notifications.php'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          setState(() {
+            _notifications = List<Map<String, dynamic>>.from(data['notifications']);
+          });
+        }
+      }
     } catch (e) {
-      debugPrint('MQTT connection failed: $e');
-      client.disconnect();
+      debugPrint('Error fetching notifications: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  void _onConnected() {
-    setState(() => _isConnected = true);
-    
-    // Subscribe to all alert topics
-    client.subscribe('alerts/+/gas', MqttQos.atLeastOnce);
-    client.subscribe('alerts/+/fire', MqttQos.atLeastOnce);
-    client.subscribe('alerts/+/system', MqttQos.atLeastOnce);
-
-    client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
-      for (var message in messages) {
-        final payload = (message.payload as MqttPublishMessage).payload.message;
-        final topic = message.topic;
-        final data = json.decode(utf8.decode(payload));
-        
-        final parts = topic.split('/');
-        final deviceId = parts[1];
-        final alertType = parts[2].toUpperCase();
-
-        final alert = Alert(
-          deviceId: deviceId,
-          type: alertType,
-          message: data['message'] ?? 'No message provided',
-          timestamp: DateTime.now(),
-        );
-
-        if (mounted) {
-          setState(() {
-            _alerts.insert(0, alert);
-          });
-          // _showNotification(alert);
-        }
-      }
-    });
+  IconData _getNotificationIcon(String type) {
+    switch (type) {
+      case 'gas':
+        return Icons.local_fire_department;
+      case 'fire':
+        return Icons.warning;
+      case 'system':
+        return Icons.system_update;
+      default:
+        return Icons.notifications;
+    }
   }
 
-  void _onDisconnected() {
-    setState(() => _isConnected = false);
-  }
-
-  void _markAllAsRead() {
-    setState(() {
-      for (var alert in _alerts) {
-        alert.isRead = true;
-      }
-    });
+  Color _getNotificationColor(String type) {
+    switch (type) {
+      case 'gas':
+        return Colors.orange;
+      case 'fire':
+        return Colors.red;
+      case 'system':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          _buildConnectionStatus(),
-          Expanded(
-            child: _alerts.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No alerts yet',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _alerts.length,
-                    itemBuilder: (context, index) {
-                      final alert = _alerts[index];
-                      return _buildAlertCard(alert);
-                    },
+      appBar: AppBar(
+        title: const Text('Thông báo'),
+        actions: [
+          if (_isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
-          ),
-        ],
-      ),
-      floatingActionButton: _alerts.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: _markAllAsRead,
-              label: const Text('Mark all as read'),
-              icon: const Icon(Icons.done_all),
-            )
-          : null,
-    );
-  }
-
-  Widget _buildConnectionStatus() {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      color: _isConnected ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            _isConnected ? Icons.check_circle : Icons.error,
-            color: _isConnected ? Colors.green : Colors.red,
-            size: 16,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _isConnected ? 'Monitoring Alerts' : 'Connection Lost',
-            style: TextStyle(
-              color: _isConnected ? Colors.green : Colors.red,
+                ),
+              ),
             ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchNotifications,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildAlertCard(Alert alert) {
-    Color cardColor;
-    IconData alertIcon;
-
-    switch (alert.type) {
-      case 'GAS':
-        cardColor = Colors.orange.withOpacity(0.1);
-        alertIcon = Icons.warning;
-        break;
-      case 'FIRE':
-        cardColor = Colors.red.withOpacity(0.1);
-        alertIcon = Icons.local_fire_department;
-        break;
-      default:
-        cardColor = Colors.blue.withOpacity(0.1);
-        alertIcon = Icons.info;
-    }
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      color: alert.isRead ? null : cardColor,
-      child: ListTile(
-        leading: Icon(alertIcon, color: alert.isRead ? Colors.grey : null),
-        title: Text(
-          '${alert.type}: ${alert.message}',
-          style: TextStyle(
-            fontWeight: alert.isRead ? FontWeight.normal : FontWeight.bold,
-          ),
-        ),
-        subtitle: Text(
-          'Device: ${alert.deviceId}\n${alert.timestamp.toString().split('.')[0]}',
-        ),
-        trailing: !alert.isRead
-            ? IconButton(
-                icon: const Icon(Icons.mark_email_read),
-                onPressed: () {
-                  setState(() {
-                    alert.isRead = true;
-                  });
-                },
+      body: RefreshIndicator(
+        onRefresh: _fetchNotifications,
+        child: _notifications.isEmpty
+            ? const Center(
+                child: Text('Không có thông báo'),
               )
-            : null,
-        isThreeLine: true,
+            : ListView.builder(
+                itemCount: _notifications.length,
+                itemBuilder: (context, index) {
+                  final notification = _notifications[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: ListTile(
+                      leading: Icon(
+                        _getNotificationIcon(notification['type']),
+                        color: _getNotificationColor(notification['type']),
+                      ),
+                      title: Text(notification['message']),
+                      subtitle: Text(
+                        'Thiết bị: ${notification['device_name']} • ${notification['created_at']}',
+                      ),
+                      trailing: Icon(
+                        Icons.circle,
+                        size: 12,
+                        color: notification['read'] == 0
+                            ? Colors.blue
+                            : Colors.transparent,
+                      ),
+                      onTap: () {
+                        // Mark as read
+                        if (notification['read'] == 0) {
+                          http.post(
+                            Uri.parse('http://192.168.1.159/iotdigi-main/mark_notification_read.php'),
+                            body: {
+                              'id': notification['id'].toString(),
+                            },
+                          );
+                          setState(() {
+                            notification['read'] = 1;
+                          });
+                        }
+                      },
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }
