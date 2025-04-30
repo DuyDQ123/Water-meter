@@ -19,7 +19,7 @@ class _StatsScreenState extends State<StatsScreen> {
   List<BarChartGroupData>? _cachedBarGroups;
   bool _isLoading = true;
   String? _error;
-  static const String serverUrl = 'http://192.168.3.106/iotdigi-main';
+  static const String serverUrl = 'http://192.168.1.159/iotdigi-main';
 
   @override
   void initState() {
@@ -72,8 +72,8 @@ class _StatsScreenState extends State<StatsScreen> {
     
     // Get the last 10 days
     final now = DateTime.now();
-    final dates = List.generate(10, (index) {
-      return now.subtract(Duration(days: 9 - index));
+    final dates = List.generate(5, (index) {
+      return now.subtract(Duration(days: 4 - index));
     });
     
     // Initialize with 0 for all days
@@ -171,7 +171,7 @@ class _StatsScreenState extends State<StatsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Daily Water Usage (Last 10 Days)',
+              'Daily Water Usage (Last 5 Days)',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

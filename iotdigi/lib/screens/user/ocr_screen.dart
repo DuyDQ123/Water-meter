@@ -20,9 +20,9 @@ class _OcrScreenState extends State {
   double _brightness = 0;
 
   // Server configuration from ESP32 config
-  static const String serverIP = '192.168.3.106';
-  static const String localServerUrl = 'http://192.168.3.106/iotdigi-main';
-  static const String controllerIP = '192.168.137.89';
+  static const String serverIP = '192.168.1.159';
+  static const String localServerUrl = 'http://192.168.1.159/iotdigi-main';
+  static const String controllerIP = '192.168.137.75';
   static const int ocrPort = 82;
   static const Duration _streamInterval = Duration(milliseconds: 100);
 
@@ -140,6 +140,19 @@ class _OcrScreenState extends State {
     }
   }
 
+  Widget _buildBrightnessButton(String label, double value) {
+    final bool isActive = _brightness == value;
+    return ElevatedButton(
+      onPressed: () => _adjustBrightness(value),
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        backgroundColor: isActive ? Theme.of(context).primaryColor : null,
+        foregroundColor: isActive ? Colors.white : null,
+      ),
+      child: Text(label),
+    );
+  }
+
   @override
   void dispose() {
     _streamTimer?.cancel();
@@ -175,16 +188,13 @@ class _OcrScreenState extends State {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    const Icon(Icons.lightbulb),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Slider(
-                        value: _brightness,
-                        onChanged: _adjustBrightness,
-                        label: 'LED Brightness',
-                      ),
-                    ),
+                    _buildBrightnessButton('Off', 0),
+                    _buildBrightnessButton('25%', 25),
+                    _buildBrightnessButton('50%', 50),
+                    _buildBrightnessButton('75%', 75),
+                    _buildBrightnessButton('100%', 100),
                   ],
                 ),
               ),

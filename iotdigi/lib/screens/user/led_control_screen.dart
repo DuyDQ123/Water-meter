@@ -13,7 +13,7 @@ class _LedControlScreenState extends State<LedControlScreen> {
   double _brightness = 0.0;
   final bool _isConnected = true;
   bool _isSending = false;
-  static const String esp32CamIp = '192.168.137.89';
+  static const String esp32CamIp = '192.168.137.75';
 
   Future<void> _updateBrightness(double value) async {
     if (_isSending) return;
@@ -104,78 +104,52 @@ class _LedControlScreenState extends State<LedControlScreen> {
   }
 
   Widget _buildLedControl() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.lightbulb,
-                  color: _brightness > 0 ? Colors.yellow : Colors.grey,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'LED Brightness',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${_brightness.round()}%',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.lightbulb,
+            size: 48,
+            color: _brightness > 0 ? Colors.yellow : Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '${_brightness.round()}%',
+            style: const TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 24),
-            Slider(
-              value: _brightness,
-              min: 0,
-              max: 100,
-              divisions: 100,
-              label: '${_brightness.round()}%',
-              onChanged: _isConnected ? _updateBrightness : null,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildPresetButton('Off', 0),
-                _buildPresetButton('25%', 25),
-                _buildPresetButton('50%', 50),
-                _buildPresetButton('75%', 75),
-                _buildPresetButton('100%', 100),
-              ],
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 32),
+          Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            alignment: WrapAlignment.center,
+            children: [
+              _buildButton('Off', 0),
+              _buildButton('25%', 25),
+              _buildButton('50%', 50),
+              _buildButton('75%', 75),
+              _buildButton('100%', 100),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildPresetButton(String label, double value) {
+  Widget _buildButton(String label, double value) {
     final bool isActive = _brightness == value;
-    
     return ElevatedButton(
       onPressed: _isConnected ? () => _updateBrightness(value) : null,
       style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         backgroundColor: isActive ? Theme.of(context).primaryColor : null,
         foregroundColor: isActive ? Colors.white : null,
       ),
-      child: Text(label),
+      child: Text(label, style: const TextStyle(fontSize: 16)),
     );
   }
 }

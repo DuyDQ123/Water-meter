@@ -17,7 +17,7 @@ class _BillScreenState extends State<BillScreen> {
   List<Map<String, dynamic>> _billBreakdown = [];
   bool _isLoading = true;
 
-  static const String serverUrl = 'http://192.168.3.106/iotdigi-main';
+  static const String serverUrl = 'http://192.168.1.159/iotdigi-main';
 
   @override
   void initState() {

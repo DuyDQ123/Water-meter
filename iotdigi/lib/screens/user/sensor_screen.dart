@@ -20,7 +20,7 @@ class _SensorScreenState extends State<SensorScreen> {
   bool _isLoading = true;
   String? _error;
   
-  static const String serverUrl = 'http://192.168.3.106/iotdigi-main';
+  static const String serverUrl = 'http://192.168.1.159/iotdigi-main';
 
   @override
   void initState() {
@@ -51,7 +51,7 @@ class _SensorScreenState extends State<SensorScreen> {
               final reading = data['latest_sensor_reading'];
               _temperature = double.parse(reading['temperature'].toString());
               _humidity = double.parse(reading['humidity'].toString());
-              _gasLevel = double.parse(reading['gas_level']?.toString() ?? '0');
+              _gasLevel = double.parse(reading['mq2']?.toString() ?? '0');
             }
             _waterUsageData = List<Map<String, dynamic>>.from(data['ocr_readings'] ?? []);
             _isLoading = false;
