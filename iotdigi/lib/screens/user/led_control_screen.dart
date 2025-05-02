@@ -32,18 +32,18 @@ class _LedControlScreenState extends State<LedControlScreen> {
       ).timeout(const Duration(seconds: 3));
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to update brightness');
+        throw Exception('Không thể cập nhật độ sáng');
       }
 
       // Small delay to prevent rapid requests
       await Future.delayed(const Duration(milliseconds: 100));
 
     } catch (e) {
-      debugPrint('Error updating brightness: $e');
+      debugPrint('Lỗi cập nhật độ sáng: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update brightness: ${e.toString()}'),
+            content: Text('Lỗi cập nhật độ sáng: ${e.toString()}'),
             duration: const Duration(seconds: 2),
           ),
         );
@@ -93,7 +93,7 @@ class _LedControlScreenState extends State<LedControlScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            _isConnected ? 'Connected' : 'Disconnected',
+            _isConnected ? 'Đã kết nối' : 'Mất kết nối',
             style: TextStyle(
               color: _isConnected ? Colors.green : Colors.red,
             ),
@@ -128,7 +128,7 @@ class _LedControlScreenState extends State<LedControlScreen> {
             runSpacing: 16,
             alignment: WrapAlignment.center,
             children: [
-              _buildButton('Off', 0),
+              _buildButton('Tắt', 0),
               _buildButton('25%', 25),
               _buildButton('50%', 50),
               _buildButton('75%', 75),

@@ -1,27 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'dart:async';
 
 class Device {
   final String id;
   String name;
-  double? locationLat;
-  double? locationLng;
-  double? lastBillAmount;
-  String? billDate;
   String? lastReading;
   String? lastUpdate;
 
   Device({
     required this.id,
     required this.name,
-    this.locationLat,
-    this.locationLng,
-    this.lastBillAmount,
-    this.billDate,
     this.lastReading,
     this.lastUpdate,
   });
@@ -39,21 +29,13 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   final List<Device> _devices = [];
   bool _isLoading = false;
   String? _error;
-  GoogleMapController? _mapController;
-  bool _showMap = false;
   Timer? _refreshTimer;
-  final _currencyFormat = NumberFormat.currency(
-    locale: 'vi_VN',
-    symbol: '₫',
-    decimalDigits: 0,
-  );
 
   @override
   void initState() {
     super.initState();
     _fetchDevices();
-    // Auto refresh every 5 minutes
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (timer) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       _fetchDevices();
     });
   }
@@ -72,7 +54,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
       ).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          throw TimeoutException('Không thể kết nối đến server');
+          throw TimeoutException('Không thể kết nối đến máy chủ');
         },
       );
 
@@ -85,10 +67,6 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
               _devices.add(Device(
                 id: deviceData['id'].toString(),
                 name: deviceData['name'],
-                locationLat: deviceData['location_lat']?.toDouble(),
-                locationLng: deviceData['location_lng']?.toDouble(),
-                lastBillAmount: deviceData['last_bill_amount']?.toDouble(),
-                billDate: deviceData['bill_date'],
                 lastReading: deviceData['last_reading'],
                 lastUpdate: deviceData['last_update'],
               ));
@@ -111,26 +89,8 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
 
   @override
   void dispose() {
-    _mapController?.dispose();
     _refreshTimer?.cancel();
     super.dispose();
-  }
-
-  Set<Marker> _createMarkers() {
-    return _devices.where((device) => 
-      device.locationLat != null && device.locationLng != null
-    ).map((device) {
-      return Marker(
-        markerId: MarkerId(device.id),
-        position: LatLng(device.locationLat!, device.locationLng!),
-        infoWindow: InfoWindow(
-          title: device.name,
-          snippet: device.lastBillAmount != null 
-              ? 'Hoá đơn gần nhất: ${_currencyFormat.format(device.lastBillAmount)}'
-              : 'Chưa có hoá đơn',
-        ),
-      );
-    }).toSet();
   }
 
   @override
@@ -154,48 +114,11 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
                 style: TextStyle(color: Colors.red.shade700),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                const Text('Chế độ xem:'),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Danh sách'),
-                  selected: !_showMap,
-                  onSelected: (selected) {
-                    setState(() => _showMap = !selected);
-                  },
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: const Text('Bản đồ'),
-                  selected: _showMap,
-                  onSelected: (selected) {
-                    setState(() => _showMap = selected);
-                  },
-                ),
-              ],
-            ),
-          ),
           Expanded(
-            child: _showMap ? _buildMap() : _buildDeviceList(),
+            child: _buildDeviceList(),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMap() {
-    return GoogleMap(
-      initialCameraPosition: const CameraPosition(
-        target: LatLng(21.028511, 105.804817), // Hà Nội
-        zoom: 12,
-      ),
-      markers: _createMarkers(),
-      onMapCreated: (GoogleMapController controller) {
-        _mapController = controller;
-      },
     );
   }
 
@@ -208,7 +131,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
 
     if (_devices.isEmpty) {
       return const Center(
-        child: Text('Chưa có thiết bị nào'),
+        child: Text('Không tìm thấy thiết bị nào'),
       );
     }
 
@@ -236,9 +159,7 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            _isLoading
-                ? 'Đang cập nhật...'
-                : 'Cập nhật tự động mỗi 5 phút',
+            _isLoading ? 'Đang cập nhật...' : 'Tự động cập nhật mỗi 10 giây',
             style: const TextStyle(color: Colors.blue),
           ),
           if (!_isLoading)
@@ -255,68 +176,37 @@ class _DeviceListScreenState extends State<DeviceListScreen> {
   Widget _buildDeviceCard(Device device) {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      child: ExpansionTile(
-        leading: const Icon(Icons.device_hub),
+      child: ListTile(
+        leading: const Icon(Icons.camera),
         title: Text(device.name),
-        subtitle: Text(
-            device.lastUpdate != null 
-            ? 'Cập nhật: ${_formatDateTime(device.lastUpdate!)}'
-            : 'Chưa có dữ liệu'
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (device.lastUpdate != null)
+              Text('Cập nhật lúc: ${_formatDateTime(device.lastUpdate!)}'),
+            if (device.lastReading != null)
+              Text('Chỉ số: ${device.lastReading}'),
+          ],
         ),
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (device.locationLat != null && device.locationLng != null)
-                  _buildInfoRow(
-                    'Vị trí',
-                    '${device.locationLat!.toStringAsFixed(6)}, ${device.locationLng!.toStringAsFixed(6)}',
-                    Icons.location_on,
-                  ),
-                if (device.lastReading != null)
-                  _buildInfoRow(
-                    'Chỉ số gần nhất',
-                    device.lastReading!,
-                    Icons.water_drop,
-                  ),
-                if (device.lastBillAmount != null)
-                  _buildInfoRow(
-                    'Hoá đơn gần nhất',
-                    _currencyFormat.format(device.lastBillAmount),
-                    Icons.receipt,
-                  ),
-                if (device.billDate != null)
-                  _buildInfoRow(
-                    'Ngày',
-                    _formatDateTime(device.billDate!),
-                    Icons.calendar_today,
-                  ),
-              ],
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.visibility),
+              onPressed: () {
+                // TODO: View camera stream
+              },
+              tooltip: 'Xem camera',
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 8),
-          Text(label),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                // TODO: Configure device
+              },
+              tooltip: 'Cài đặt',
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Show error if logout fails
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error logging out: ${e.toString()}'),
+          content: Text('Lỗi đăng xuất: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -53,11 +53,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String _getTitle(int index) {
     switch (index) {
       case 0:
-        return 'Water Meter OCR';
+        return 'Chụp chỉ số nước';
       case 1:
-        return 'Sensors';
+        return 'Cảm biến';
       case 2:
-        return 'Statistics';
+        return 'Thống kê';
       default:
         return 'IoT Digi';
     }
@@ -87,15 +87,15 @@ class _HomeScreenState extends State<HomeScreen> {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.camera_alt),
-            label: 'OCR',
+            label: 'Chỉ số',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.sensors),
-            label: 'Sensors',
+            label: 'Cảm biến',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.analytics),
-            label: 'Stats',
+            label: 'Thống kê',
           ),
         ],
         currentIndex: _selectedIndex,

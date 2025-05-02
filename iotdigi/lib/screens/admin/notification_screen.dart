@@ -19,7 +19,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   void initState() {
     super.initState();
     _fetchNotifications();
-    // Auto refresh every minute
+    // Tự động làm mới mỗi phút
     _refreshTimer = Timer.periodic(
       const Duration(minutes: 1),
       (timer) => _fetchNotifications(),
@@ -53,7 +53,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error fetching notifications: $e');
+      debugPrint('Lỗi tải thông báo: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -145,7 +145,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             : Colors.transparent,
                       ),
                       onTap: () {
-                        // Mark as read
+                        // Đánh dấu đã đọc
                         if (notification['read'] == 0) {
                           http.post(
                             Uri.parse('http://192.168.1.159/iotdigi-main/mark_notification_read.php'),

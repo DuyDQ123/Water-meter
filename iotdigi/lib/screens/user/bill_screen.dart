@@ -45,7 +45,7 @@ class _BillScreenState extends State<BillScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: ${e.toString()}'),
+          content: Text('Lỗi: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -57,7 +57,7 @@ class _BillScreenState extends State<BillScreen> {
     if (_waterUsageData.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Not enough readings to calculate bill'),
+          content: Text('Need at least 2 readings to calculate bill'),
         ),
       );
       return;
@@ -101,7 +101,7 @@ class _BillScreenState extends State<BillScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error calculating bill: ${e.toString()}'),
+          content: Text('Lỗi tính hoá đơn: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -118,12 +118,12 @@ class _BillScreenState extends State<BillScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Water Bill Calculator'),
+        title: const Text('Tính hoá đơn tiền nước'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _fetchData,
-            tooltip: 'Refresh and Calculate',
+            tooltip: 'Cập nhật và tính lại',
           ),
         ],
       ),
@@ -138,17 +138,17 @@ class _BillScreenState extends State<BillScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Initial Reading: ${_waterUsageData.first['ocr_text']} m³',
+                      'Chỉ số đầu: ${_waterUsageData.first['ocr_text']} m³',
                       style: const TextStyle(fontSize: 16),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Latest Reading: ${_waterUsageData.last['ocr_text']} m³',
+                      'Chỉ số cuối: ${_waterUsageData.last['ocr_text']} m³',
                       style: const TextStyle(fontSize: 16),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Total Usage: ${_totalUsage?.toStringAsFixed(1)} m³',
+                      'Tổng tiêu thụ: ${_totalUsage?.toStringAsFixed(1)} m³',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -160,7 +160,7 @@ class _BillScreenState extends State<BillScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Bill Breakdown',
+              'Chi tiết hoá đơn',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -170,7 +170,7 @@ class _BillScreenState extends State<BillScreen> {
             ..._billBreakdown.map((tier) => Card(
               child: ListTile(
                 title: Text('${tier['usage'].toStringAsFixed(1)} m³'),
-                subtitle: Text('Rate: ${tier['rate']} VNĐ/m³'),
+                subtitle: Text('Đơn giá: ${tier['rate']} VNĐ/m³'),
                 trailing: Text(
                   '${tier['amount'].toStringAsFixed(0)} VNĐ',
                   style: const TextStyle(
@@ -187,7 +187,7 @@ class _BillScreenState extends State<BillScreen> {
                 child: Column(
                   children: [
                     const Text(
-                      'Total Bill',
+                      'Tổng cộng',
                       style: TextStyle(fontSize: 20),
                     ),
                     const SizedBox(height: 8),

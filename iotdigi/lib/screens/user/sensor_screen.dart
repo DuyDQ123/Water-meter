@@ -20,7 +20,7 @@ class _SensorScreenState extends State<SensorScreen> {
   bool _isLoading = true;
   String? _error;
   
-  static const String serverUrl = 'http://192.168.1.159/iotdigi-main';
+  static const String serverUrl = 'http://192.168.1.172/iotdigi-main';
 
   @override
   void initState() {
@@ -59,12 +59,12 @@ class _SensorScreenState extends State<SensorScreen> {
           });
         }
       } else {
-        throw Exception('Failed to load sensor data');
+        throw Exception('Không thể tải dữ liệu cảm biến');
       }
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = 'Error loading sensor data';
+        _error = 'Lỗi tải dữ liệu cảm biến';
         _isLoading = false;
       });
     }
@@ -152,7 +152,7 @@ class _SensorScreenState extends State<SensorScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Temperature',
+                    'Nhiệt độ',
                     style: TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 8),
@@ -194,7 +194,7 @@ class _SensorScreenState extends State<SensorScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Humidity',
+                    'Độ ẩm',
                     style: TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 8),
@@ -236,7 +236,7 @@ class _SensorScreenState extends State<SensorScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Gas Level (MQ2)',
+                    'Khí gas (MQ2)',
                     style: TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 8),
@@ -252,7 +252,7 @@ class _SensorScreenState extends State<SensorScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text(
-                        'Warning!',
+                        'Cảnh báo!',
                         style: TextStyle(
                           color: Colors.red[700],
                           fontWeight: FontWeight.bold,
@@ -297,7 +297,7 @@ class _SensorScreenState extends State<SensorScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Calculate Bill',
+                    'Tính hoá đơn',
                     style: TextStyle(fontSize: 16),
                   ),
                   if (_waterUsageData.isNotEmpty) ...[

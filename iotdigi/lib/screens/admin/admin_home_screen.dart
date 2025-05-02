@@ -29,7 +29,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin Dashboard'),
+        title: const Text('Quản trị viên'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -50,11 +50,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.devices),
-            label: 'Devices',
+            label: 'Thiết bị',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),
-            label: 'Notifications',
+            label: 'Thông báo',
           ),
         ],
         currentIndex: _selectedIndex,
