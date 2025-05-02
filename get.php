@@ -19,7 +19,7 @@ if ($conn->connect_error) {
 }
 
 // Get latest 10 sensor readings
-$sensor_sql = "SELECT temperature, humidity, timestamp FROM dht_data ORDER BY timestamp DESC LIMIT 10";
+$sensor_sql = "SELECT temperature, humidity, mq2, timestamp FROM sensor_data ORDER BY timestamp DESC LIMIT 10";
 $sensor_result = $conn->query($sensor_sql);
 
 $sensor_readings = [];
@@ -33,6 +33,7 @@ if ($sensor_result->num_rows > 0) {
         $sensor_readings[] = [
             'temperature' => number_format($sensor_row['temperature'], 1),
             'humidity' => number_format($sensor_row['humidity'], 1),
+            'mq2' => number_format($sensor_row['mq2'], 1),
             'timestamp' => $sensor_row['timestamp']
         ];
     }

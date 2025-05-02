@@ -87,11 +87,29 @@ void ocrProcessingTask(void* parameter) {
                             
                             String jsonResult;
                             StaticJsonDocument<200> resultDoc;
+                            resultDoc["device_id"] = config->getDeviceId();
                             resultDoc["ocr_text"] = text;
                             serializeJson(resultDoc, jsonResult);
                             
                             int resultCode = resultHttp.POST(jsonResult);
-                            if (resultCode != HTTP_CODE_OK) {
+                            if (resultCode == HTTP_CODE_OK) {
+                                // Create water bill
+                                HTTPClient billHttp;
+                                billHttp.begin(String(config->getServerUrl()) + "/iotdigi-main/create_water_bill.php");
+                                billHttp.addHeader("Content-Type", "application/json");
+                                
+                                String billJson;
+                                StaticJsonDocument<200> billDoc;
+                                billDoc["device_id"] = config->getDeviceId();
+                                billDoc["ocr_result_id"] = jsonDoc["id"]; // Assuming server returns OCR result ID
+                                serializeJson(billDoc, billJson);
+                                
+                                int billCode = billHttp.POST(billJson);
+                                if (billCode != HTTP_CODE_OK) {
+                                    Serial.printf("Failed to create water bill, HTTP code: %d\n", billCode);
+                                }
+                                billHttp.end();
+                            } else {
                                 Serial.printf("Failed to send OCR result, HTTP code: %d\n", resultCode);
                             }
                             resultHttp.end();

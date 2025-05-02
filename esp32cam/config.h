@@ -36,19 +36,30 @@
 #define OCR_AUTO_INTERVAL 3600000  // 1 hour in milliseconds
 #define HTTP_BOUNDARY "----WebKitFormBoundary7MA4YWxkTrZu0gW"
 
+// WiFi Scanning Settings
+#define WIFI_SCAN_INTERVAL 300000  // 5 minutes in milliseconds
+#define MAX_WIFI_NETWORKS 15       // Maximum number of WiFi networks to track
+
 // Network Configuration
 class NetworkConfig {
 public:
-    NetworkConfig() : imageUrl("") {}
+    NetworkConfig() : imageUrl(""), deviceId(1) {}
     
     const char* getSSID() const { return "duy"; }
     const char* getPassword() const { return "11111111"; }
-    const char* getNgrokUrl() const { return "e43b-1-53-82-128.ngrok-free.app"; }
-    const char* getServerUrl() const { return "http://192.168.3.106"; }  // Local server for image uploads
+    const char* getNgrokUrl() const { return "1314-42-116-76-251.ngrok-free.app"; }
+    const char* getServerUrl() const { return "http://192.168.1.172"; }  // Local server for image uploads
     const char* getOcrApiUrl() const { return "https://api.ocr.space/parse/image"; }
-    const char* getOcrApiKey() const { return "K85797055088957"; }
+    const char* getOcrApiKey() const { return "K81923829988957"; }
+    
+    // Device identification
+    int getDeviceId() const { return deviceId; }
+    void setDeviceId(int id) { deviceId = id; }
     
     String imageUrl;  // Will be constructed in setup()
+
+private:
+    int deviceId;  // Unique identifier for this ESP32-CAM
 };
 
 #endif // CONFIG_H
