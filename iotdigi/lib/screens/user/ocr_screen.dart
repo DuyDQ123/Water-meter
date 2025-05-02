@@ -34,7 +34,6 @@ class _OcrScreenState extends State {
   void initState() {
     super.initState();
     _startStreaming();
-    _startDataPolling();
   }
 
   void _startStreaming() {
@@ -64,7 +63,9 @@ class _OcrScreenState extends State {
         debugPrint('Trying ngrok URL (attempt ${retryCount + 1}): $ngrokStreamUrl');
 
         if (await tryUrl(ngrokStreamUrl)) {
-          setState(() => _currentImageUrl = ngrokStreamUrl);
+          if (mounted) {
+            setState(() => _currentImageUrl = ngrokStreamUrl);
+          }
           return;
         }
 
@@ -73,7 +74,9 @@ class _OcrScreenState extends State {
         debugPrint('Trying local URL (attempt ${retryCount + 1}): $localStreamUrl');
 
         if (await tryUrl(localStreamUrl)) {
-          setState(() => _currentImageUrl = localStreamUrl);
+          if (mounted) {
+            setState(() => _currentImageUrl = localStreamUrl);
+          }
           return;
         }
 
@@ -86,9 +89,11 @@ class _OcrScreenState extends State {
       debugPrint('All connection attempts failed after $maxRetries retries');
     });
 
-    // Poll sensor data every 5 seconds
-    _streamTimer = Timer.periodic(streamInterval, (_) {
-      _fetchData();
+    // Poll sensor data using the same timer
+    _streamTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted) {
+        _fetchData();
+      }
     });
   }
 
@@ -99,11 +104,6 @@ class _OcrScreenState extends State {
     super.dispose();
   }
 
-  void _startDataPolling() {
-    Timer.periodic(const Duration(seconds: 5), (_) {
-      _fetchData();
-    });
-  }
 
   Future<void> _fetchData() async {
     try {
@@ -121,12 +121,14 @@ class _OcrScreenState extends State {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['status'] == 'success') {
-          setState(() {
-            if (data['latest_ocr_result'] != null) {
-              _recognizedText = data['latest_ocr_result']['ocr_text'];
-              _error = null; // Clear any previous errors
-            }
-          });
+          if (mounted) {
+            setState(() {
+              if (data['latest_ocr_result'] != null) {
+                _recognizedText = data['latest_ocr_result']['ocr_text'];
+                _error = null; // Clear any previous errors
+              }
+            });
+          }
         } else {
           throw Exception(data['message'] ?? 'Lỗi không xác định từ máy chủ');
         }
@@ -135,13 +137,16 @@ class _OcrScreenState extends State {
       }
     } catch (e) {
       debugPrint('Lỗi tải dữ liệu: $e');
-      setState(() => _error = _getErrorMessage(e));
+      if (mounted) {
+        setState(() => _error = _getErrorMessage(e));
+      }
     }
   }
 
   Future<void> _triggerOcr() async {
     if (_isProcessing) return;
 
+    if (!mounted) return;
     setState(() {
       _isProcessing = true;
       _error = null;
@@ -170,14 +175,19 @@ class _OcrScreenState extends State {
         throw Exception('Không thể kích hoạt chụp ảnh (Mã lỗi: ${response.statusCode})');
       }
     } catch (e) {
-      setState(() => _error = _getErrorMessage(e));
+      if (mounted) {
+        setState(() => _error = _getErrorMessage(e));
+      }
       debugPrint('Lỗi kích hoạt OCR: $e');
     } finally {
-      setState(() => _isProcessing = false);
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 
   Future<void> _adjustBrightness(double value) async {
+    if (!mounted) return;
     setState(() => _brightness = value);
     final brightnessValue = (value * 800).round();
 
@@ -193,7 +203,9 @@ class _OcrScreenState extends State {
         ).timeout(const Duration(seconds: 5));
       });
     } catch (e) {
-      setState(() => _error = 'Lỗi điều chỉnh đèn: $e');
+      if (mounted) {
+        setState(() => _error = 'Lỗi điều chỉnh đèn: $e');
+      }
       debugPrint('Lỗi điều chỉnh đèn: $e');
       // Clear error after 3 seconds
       Future.delayed(const Duration(seconds: 3), () {

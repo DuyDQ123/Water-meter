@@ -15,6 +15,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _addressController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -23,12 +24,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
   Future<bool> _checkConnectivity() async {
     try {
-      final result = await InternetAddress.lookup('192.168.1.159');
+      final result = await InternetAddress.lookup('google.com');
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } on SocketException catch (_) {
       return false;
@@ -44,38 +46,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // Check network connectivity first
-      final hasConnection = await _checkConnectivity();
-      if (!hasConnection) {
-        setState(() {
-          _errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra:\n'
-              '1. Điện thoại đã kết nối WiFi\n'
-              '2. Điện thoại và server trong cùng mạng LAN\n'
-              '3. Server (XAMPP) đang chạy';
-          _isLoading = false;
-        });
-        return;
-      }
-
+      setState(() => _errorMessage = null);
+      
       final authService = Provider.of<AuthService>(context, listen: false);
+      debugPrint('Registering with:');
+      debugPrint('Email: ${_emailController.text.trim()}');
+      debugPrint('Address: ${_addressController.text.trim()}');
+      
       final error = await authService.register(
         _emailController.text.trim(),
         _passwordController.text.trim(),
+        _addressController.text.trim(),
       );
 
       if (!mounted) return;
 
       if (error != null) {
+        debugPrint('Registration error: $error');
         setState(() {
-          _errorMessage = 'Lỗi: $error\n\n'
-              'Kiểm tra:\n'
-              '1. Email chưa được sử dụng\n'
-              '2. Server address: ${AuthService.baseUrl}\n'
-              '3. XAMPP (Apache + MySQL) đang chạy';
+          _errorMessage = error;
           _isLoading = false;
         });
         return;
       }
+      
+      debugPrint('Registration successful');
 
       // Clear form on successful registration
       _passwordController.clear();
@@ -173,6 +168,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       }
                       if (value != _passwordController.text) {
                         return 'Mật khẩu không khớp';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _addressController,
+                    decoration: const InputDecoration(
+                      labelText: 'Địa chỉ',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_on),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Vui lòng nhập địa chỉ';
                       }
                       return null;
                     },

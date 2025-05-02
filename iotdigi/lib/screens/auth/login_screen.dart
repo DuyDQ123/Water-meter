@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<bool> _checkConnectivity() async {
     try {
-      final result = await InternetAddress.lookup('192.168.1.159');
+      final result = await InternetAddress.lookup('192.168.1.172');
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } on SocketException catch (_) {
       return false;
@@ -46,10 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final hasConnection = await _checkConnectivity();
       if (!hasConnection) {
         setState(() {
-          _errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra:\n'
-              '1. Điện thoại đã kết nối WiFi\n'
-              '2. Điện thoại và server trong cùng mạng LAN\n'
-              '3. Server (XAMPP) đang chạy';
+          _errorMessage = 'Không thể kết nối đến máy chủ';
           _isLoading = false;
         });
         return;
@@ -65,11 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (error != null) {
         setState(() {
-          _errorMessage = 'Lỗi: $error\n\n'
-              'Kiểm tra:\n'
-              '1. Email và mật khẩu đúng\n'
-              '2. Server address: ${AuthService.baseUrl}\n'
-              '3. XAMPP (Apache + MySQL) đang chạy';
+          _errorMessage = error;
           _isLoading = false;
         });
         return;
@@ -87,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Lỗi không xác định: $e';
+        _errorMessage = 'Sai email hoặc mật khẩu';
         _isLoading = false;
       });
     }

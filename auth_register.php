@@ -14,10 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $data = json_decode(file_get_contents('php://input'), true);
 $email = $data['email'] ?? '';
 $password = $data['password'] ?? '';
+$address = $data['address'] ?? '';
 
-if (empty($email) || empty($password)) {
+if (empty($email) || empty($password) || empty($address)) {
     http_response_code(400);
-    echo json_encode(['error' => 'Email and password are required']);
+    echo json_encode(['error' => 'Email, password, and address are required']);
     exit;
 }
 
@@ -56,8 +57,8 @@ $stmt->close();
 $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
 // Insert new user
-$stmt = $conn->prepare('INSERT INTO users (email, password, is_admin) VALUES (?, ?, FALSE)');
-$stmt->bind_param('ss', $email, $hashedPassword);
+$stmt = $conn->prepare('INSERT INTO users (email, password, address, is_admin) VALUES (?, ?, ?, FALSE)');
+$stmt->bind_param('sss', $email, $hashedPassword, $address);
 
 if (!$stmt->execute()) {
     http_response_code(500);
@@ -72,6 +73,7 @@ echo json_encode([
     'success' => true,
     'user' => [
         'email' => $email,
+        'address' => $address,
         'isAdmin' => false
     ]
 ]);
